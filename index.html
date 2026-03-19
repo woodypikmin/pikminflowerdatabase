@@ -9,7 +9,7 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
-<body class="bg-pink-50 min-h-screen font-sans">
+<body class="bg-emerald-50 min-h-screen font-sans">
     <div id="root"></div>
 
     <script type="text/babel">
@@ -25,7 +25,7 @@
         );
 
         const ICONS = {
-            Flower: <path d="M12 2v20M17 5c0 3-5 5-5 5s-5-2-5-5a5 5 0 1 1 10 0z M12 12c0 3 4 4 4 4s-4 1-4 4-4-1-4-4 4-1 4-4z" />,
+            Leaf: <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12" />,
             Lock: <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />,
             Unlock: <Fragment><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 9.9-1" /></Fragment>,
             Plus: <path d="M5 12h14 M12 5v14" />,
@@ -122,7 +122,7 @@
                     if (pwd) {
                         setIsAdmin(true);
                         setPassword(pwd);
-                        alert("已進入管理員模式！");
+                        alert("已進入管理員模式！可以開始新增資料了。");
                     }
                 }
             };
@@ -183,18 +183,18 @@
 
             return (
                 <div className="pb-20">
-                    <header className="bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-lg sticky top-0 z-20">
+                    <header className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg sticky top-0 z-20">
                         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                                <Icon path={ICONS.Flower} className="text-pink-100" />
+                                <Icon path={ICONS.Leaf} className="text-emerald-100" />
                                 <h1 className="text-xl font-black tracking-wide">Pikmin 花朵變異圖鑑</h1>
                             </div>
                             <div className="flex gap-3 items-center">
-                                <button onClick={handleLogin} className={`p-2 rounded-full transition-colors ${isAdmin ? 'bg-white/20 text-yellow-300' : 'hover:bg-white/10 text-pink-100'}`}>
+                                <button onClick={handleLogin} className={`p-2 rounded-full transition-colors ${isAdmin ? 'bg-white/20 text-yellow-300' : 'hover:bg-white/10 text-emerald-100'}`}>
                                     <Icon path={isAdmin ? ICONS.Unlock : ICONS.Lock} />
                                 </button>
                                 {isAdmin && (
-                                    <button onClick={() => setIsModalOpen(true)} className="bg-white text-pink-600 hover:bg-pink-50 px-4 py-2 rounded-full font-bold flex items-center gap-1 text-sm shadow-sm transition-transform active:scale-95">
+                                    <button onClick={() => setIsModalOpen(true)} className="bg-white text-emerald-700 hover:bg-emerald-50 px-4 py-2 rounded-full font-bold flex items-center gap-1 text-sm shadow-sm transition-transform active:scale-95">
                                         <Icon path={ICONS.Plus} /> 新增紀錄
                                     </button>
                                 )}
@@ -205,8 +205,8 @@
                     <main className="max-w-5xl mx-auto px-4 py-8">
                         {loading ? (
                             <div className="text-center py-20 flex flex-col items-center">
-                                <div className="w-10 h-10 border-4 border-pink-200 border-t-pink-500 rounded-full animate-spin mb-4"></div>
-                                <p className="text-pink-600 font-bold animate-pulse">正在讀取最新數據...</p>
+                                <div className="w-10 h-10 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin mb-4"></div>
+                                <p className="text-emerald-700 font-bold animate-pulse">正在讀取最新數據...</p>
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -228,22 +228,20 @@
                                         if (!acc[r.method]) acc[r.method] = { w:0, b:0, y:0, r:0, count:0, list:[] };
                                         acc[r.method].w += r.w; acc[r.method].b += r.b; acc[r.method].y += r.y; acc[r.method].r += r.r;
                                         acc[r.method].count += 1;
-                                        // 格式化日期，只取 YYYY-MM-DD
                                         const cleanDate = r.date ? new Date(r.date).toISOString().slice(0, 10) : '無日期';
                                         acc[r.method].list.push({ ...r, date: cleanDate });
                                         return acc;
                                     }, {});
 
                                     return (
-                                        <div key={item.name} className="bg-white rounded-3xl shadow-sm border border-pink-100/50 overflow-hidden hover:shadow-md transition-shadow">
-                                            {/* 圖片區塊 (自適應模式) */}
+                                        <div key={item.name} className="bg-white rounded-3xl shadow-sm border border-emerald-100/60 overflow-hidden hover:shadow-md transition-shadow">
                                             {item.imageUrl ? (
                                                 <div className="h-48 w-full bg-slate-50 relative p-2 border-b border-slate-100">
                                                     <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain" />
                                                 </div>
                                             ) : (
-                                                <div className="h-20 w-full bg-gradient-to-r from-pink-50 to-rose-50 flex items-center justify-center border-b border-pink-100/50">
-                                                    <Icon path={ICONS.Flower} className="text-pink-200 opacity-50 w-8 h-8" />
+                                                <div className="h-20 w-full bg-gradient-to-r from-emerald-50 to-teal-50 flex items-center justify-center border-b border-emerald-100/50">
+                                                    <Icon path={ICONS.Leaf} className="text-emerald-200 opacity-60 w-8 h-8" />
                                                 </div>
                                             )}
                                             
@@ -252,13 +250,12 @@
                                                     <h3 className="text-2xl font-black text-slate-800">{item.name}</h3>
                                                     <div className="flex flex-col items-end">
                                                         <span className="text-[10px] font-bold text-slate-400 mb-0.5">總樣本數</span>
-                                                        <span className="text-sm font-black text-pink-600 bg-pink-50 px-3 py-1 rounded-full">{total}</span>
+                                                        <span className="text-sm font-black text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full">{total}</span>
                                                     </div>
                                                 </div>
                                                 
                                                 {renderProgressBar(totalW, totalB, totalY, totalR)}
                                                 
-                                                {/* 總數儀表板 */}
                                                 <div className="flex justify-between text-base font-extrabold text-slate-600 mt-4 mb-2 px-1">
                                                     <div className="flex flex-col items-center text-slate-500">
                                                         <span>⚪ {pW}%</span>
@@ -278,11 +275,10 @@
                                                     </div>
                                                 </div>
 
-                                                <button onClick={() => toggleExpandFlower(item.name)} className="w-full mt-6 py-3 bg-slate-50 hover:bg-pink-50 text-slate-500 hover:text-pink-600 rounded-xl text-sm font-bold flex justify-center items-center gap-1.5 transition-colors">
+                                                <button onClick={() => toggleExpandFlower(item.name)} className="w-full mt-6 py-3 bg-slate-50 hover:bg-emerald-50 text-slate-500 hover:text-emerald-700 rounded-xl text-sm font-bold flex justify-center items-center gap-1.5 transition-colors">
                                                     {isExpanded ? <><Icon path={ICONS.ChevronUp}/> 收起詳細實驗數據</> : <><Icon path={ICONS.ChevronDown}/> 展開詳細實驗數據</>}
                                                 </button>
 
-                                                {/* 展開的明細 */}
                                                 {isExpanded && (
                                                     <div className="mt-5 pt-5 border-t-2 border-dashed border-slate-100 space-y-6">
                                                         {Object.keys(groupedByMethod).length === 0 ? (
@@ -293,7 +289,7 @@
                                                                 return (
                                                                     <div key={method} className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
                                                                         <div className="flex justify-between items-center mb-3">
-                                                                            <span className="text-sm font-black text-slate-700 bg-slate-100 px-3 py-1 rounded-lg">🏷️ {method}</span>
+                                                                            <span className="text-sm font-black text-emerald-800 bg-emerald-50 border border-emerald-100 px-3 py-1 rounded-lg">🏷️ {method}</span>
                                                                             <span className="text-xs font-bold text-slate-400">共 {stTotal} 朵</span>
                                                                         </div>
                                                                         {renderProgressBar(stats.w, stats.b, stats.y, stats.r)}
@@ -320,7 +316,7 @@
                                                         )}
                                                         {isAdmin && (
                                                             <div className="text-center bg-yellow-50 text-yellow-700 text-xs font-bold p-3 rounded-lg">
-                                                                💡 修改或刪除資料，請直接至 Google 試算表操作。
+                                                                💡 提示：若要修改或刪除明細，請直接至 Google 試算表操作。
                                                             </div>
                                                         )}
                                                     </div>
@@ -333,33 +329,32 @@
                         )}
                     </main>
 
-                    {/* 新增紀錄 Modal */}
                     {isModalOpen && (
                         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                             <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md flex flex-col max-h-[90vh]">
                                 <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center">
-                                    <h3 className="text-xl font-black text-pink-600 flex items-center gap-2">
+                                    <h3 className="text-xl font-black text-emerald-700 flex items-center gap-2">
                                         <Icon path={ICONS.Plus} /> 新增花朵紀錄
                                     </h3>
                                     <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 bg-slate-100 p-1.5 rounded-full"><Icon path={ICONS.X} /></button>
                                 </div>
                                 <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto">
                                     
-                                    <div className="bg-pink-50 p-4 rounded-2xl space-y-4 border border-pink-100">
+                                    <div className="bg-emerald-50 p-4 rounded-2xl space-y-4 border border-emerald-100">
                                         <div>
                                             <label className="text-sm font-black text-slate-700 block mb-1.5">1. 花朵名稱 (必填)</label>
-                                            <input list="flower-opts" required className="w-full border-0 rounded-xl p-3 text-base shadow-sm focus:ring-2 focus:ring-pink-500 outline-none" placeholder="例如：油菜花" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
+                                            <input list="flower-opts" required className="w-full border-0 rounded-xl p-3 text-base shadow-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="例如：油菜花" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
                                             <datalist id="flower-opts">
                                                 {availableFlowerNames.map(f => <option key={f} value={f} />)}
                                             </datalist>
                                         </div>
                                         <div>
                                             <label className="text-sm font-black text-slate-700 flex items-center gap-1 mb-1.5">
-                                                2. 花朵封面圖片網址 <span className="text-xs font-medium text-pink-500">(無則留空)</span>
+                                                2. 花朵封面圖片網址 <span className="text-xs font-medium text-emerald-500">(無則留空)</span>
                                             </label>
                                             <div className="relative">
                                                 <div className="absolute left-3 top-3.5 text-slate-400"><Icon path={ICONS.Link} /></div>
-                                                <input type="url" placeholder="https://i.imgur.com/..." className="w-full border-0 rounded-xl pl-9 pr-3 py-3 text-sm shadow-sm focus:ring-2 focus:ring-pink-500 outline-none" value={formData.imageUrl} onChange={e => setFormData({ ...formData, imageUrl: e.target.value })} />
+                                                <input type="url" placeholder="https://i.imgur.com/..." className="w-full border-0 rounded-xl pl-9 pr-3 py-3 text-sm shadow-sm focus:ring-2 focus:ring-emerald-500 outline-none" value={formData.imageUrl} onChange={e => setFormData({ ...formData, imageUrl: e.target.value })} />
                                             </div>
                                             <p className="text-[10px] text-slate-400 mt-1.5 leading-tight">如果這朵花已經有圖片，留空就會沿用舊圖。若填寫新網址，會覆蓋舊有圖片。</p>
                                         </div>
@@ -368,8 +363,8 @@
                                     <div className="bg-slate-50 p-4 rounded-2xl space-y-4 border border-slate-100">
                                         <h4 className="text-sm font-black text-slate-700 border-b border-slate-200 pb-2">3. 實驗數據 (必填)</h4>
                                         <div className="grid grid-cols-2 gap-4">
-                                            <div><label className="text-xs font-bold text-slate-500 block mb-1">實驗日期</label><input type="date" required className="w-full border-0 shadow-sm rounded-xl p-2.5 text-sm outline-none focus:ring-2 focus:ring-pink-500" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} /></div>
-                                            <div><label className="text-xs font-bold text-slate-500 block mb-1">種法 (Tag)</label><input type="text" required placeholder="例如: 雙色+櫻花" className="w-full border-0 shadow-sm rounded-xl p-2.5 text-sm outline-none focus:ring-2 focus:ring-pink-500" value={formData.method} onChange={e => setFormData({ ...formData, method: e.target.value })} /></div>
+                                            <div><label className="text-xs font-bold text-slate-500 block mb-1">實驗日期</label><input type="date" required className="w-full border-0 shadow-sm rounded-xl p-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} /></div>
+                                            <div><label className="text-xs font-bold text-slate-500 block mb-1">種法 (Tag)</label><input type="text" required placeholder="例如: 雙色+櫻花" className="w-full border-0 shadow-sm rounded-xl p-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500" value={formData.method} onChange={e => setFormData({ ...formData, method: e.target.value })} /></div>
                                         </div>
                                         <div className="grid grid-cols-4 gap-3 pt-2">
                                             <div><label className="text-sm font-black text-slate-400 block mb-1.5 text-center">白</label><input type="number" min="0" className="w-full border-0 shadow-sm rounded-xl p-2.5 text-base text-center outline-none focus:ring-2 focus:ring-slate-300" value={formData.w} onChange={e => setFormData({...formData, w: e.target.value})} /></div>
@@ -381,7 +376,7 @@
 
                                     <div className="pt-2 flex gap-3">
                                         <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl transition-colors">取消</button>
-                                        <button type="submit" disabled={isSubmitting} className="flex-[2] py-3.5 bg-gradient-to-r from-pink-500 to-rose-500 text-white font-black rounded-xl shadow-lg hover:shadow-xl transition-all active:scale-95 disabled:opacity-50">
+                                        <button type="submit" disabled={isSubmitting} className="flex-[2] py-3.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-black rounded-xl shadow-lg hover:shadow-xl transition-all active:scale-95 disabled:opacity-50">
                                             {isSubmitting ? '資料傳送中...' : '確認儲存並寫入'}
                                         </button>
                                     </div>
