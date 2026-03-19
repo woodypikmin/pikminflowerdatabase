@@ -15,7 +15,7 @@
     <script type="text/babel">
         const { useState, useEffect, Fragment } = React;
 
-        // ★ 這是你的專屬資料庫 API
+        // ★ API 網址維持不變
         const API_URL = "https://script.google.com/macros/s/AKfycbwuW-ao7uazpgYnjKH8Tlk1tk2f0vn5CQN7KzJzTktSzlPiO4MwJy9x1eKYMZxKSAFdQQ/exec";
 
         const Icon = ({ path, className = "" }) => (
@@ -25,14 +25,16 @@
         );
 
         const ICONS = {
-            Leaf: <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12" />,
+            Flower: <path d="M12 2v20M17 5c0 3-5 5-5 5s-5-2-5-5a5 5 0 1 1 10 0z M12 12c0 3 4 4 4 4s-4 1-4 4-4-1-4-4 4-1 4-4z" />,
             Lock: <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />,
             Unlock: <Fragment><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 9.9-1" /></Fragment>,
             Plus: <path d="M5 12h14 M12 5v14" />,
             X: <path d="M18 6 6 18 M6 6l12 12" />,
             ChevronDown: <polyline points="6 9 12 15 18 9" />,
             ChevronUp: <polyline points="18 15 12 9 6 15" />,
-            Link: <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71 M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+            Link: <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71 M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />,
+            Edit2: <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />,
+            Trash2: <path d="M3 6h18 M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6 M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2 M10 11v6 M14 11v6" />
         };
 
         const App = () => {
@@ -40,53 +42,47 @@
             const [loading, setLoading] = useState(true);
             const [expandedFlowers, setExpandedFlowers] = useState(new Set());
             
-            // 管理員狀態
             const [isAdmin, setIsAdmin] = useState(false);
             const [password, setPassword] = useState("");
 
-            // 表單狀態
             const [isModalOpen, setIsModalOpen] = useState(false);
             const [isSubmitting, setIsSubmitting] = useState(false);
+            
+            // 加入 _rowNumber 欄位，用來判斷是新增還是編輯
             const [formData, setFormData] = useState({
-                name: "", date: new Date().toISOString().slice(0, 10), method: "", 
-                w: "", b: "", y: "", r: "", imageUrl: ""
+                _rowNumber: null, name: "", date: new Date().toISOString().slice(0, 10), 
+                method: "", w: "", b: "", y: "", r: "", imageUrl: ""
             });
 
-            // 取得資料
             const fetchData = async () => {
                 setLoading(true);
                 try {
                     const res = await fetch(API_URL);
                     const data = await res.json();
                     
-                    // 將平坦的 Excel 每一行資料，整理成「一朵花一個卡片」的格式
                     const grouped = {};
                     data.forEach(row => {
                         const name = row['花朵名稱'];
                         if (!name) return;
                         if (!grouped[name]) {
-                            grouped[name] = {
-                                name: name,
-                                imageUrl: row['圖片網址'] || '',
-                                records: []
-                            };
+                            grouped[name] = { name: name, imageUrl: row['圖片網址'] || '', records: [] };
                         }
-                        // 如果後面有更新的圖片網址，就覆蓋
                         if (row['圖片網址']) grouped[name].imageUrl = row['圖片網址'];
                         
                         if (row['種法']) {
                             grouped[name].records.push({
+                                _rowNumber: row['_rowNumber'], // 接收 API 傳來的行號
                                 date: row['日期'] || '',
                                 method: row['種法'],
                                 w: Number(row['白']) || 0,
                                 b: Number(row['藍']) || 0,
                                 y: Number(row['黃']) || 0,
                                 r: Number(row['紅']) || 0,
+                                imageUrl: row['圖片網址'] || ''
                             });
                         }
                     });
                     
-                    // 依照總樣本數排序（樣本越多的排越前面）
                     const flowerArray = Object.values(grouped).sort((a, b) => {
                         const totalA = a.records.reduce((s, r) => s + r.w + r.b + r.y + r.r, 0);
                         const totalB = b.records.reduce((s, r) => s + r.w + r.b + r.y + r.r, 0);
@@ -95,16 +91,13 @@
 
                     setFlowers(flowerArray);
                 } catch (error) {
-                    console.error("載入失敗", error);
                     alert("資料載入失敗，請檢查網路或 API 網址設定！");
                 } finally {
                     setLoading(false);
                 }
             };
 
-            useEffect(() => {
-                fetchData();
-            }, []);
+            useEffect(() => { fetchData(); }, []);
 
             const toggleExpandFlower = (name) => {
                 const next = new Set(expandedFlowers);
@@ -115,15 +108,58 @@
 
             const handleLogin = () => {
                 if (isAdmin) {
-                    setIsAdmin(false);
-                    setPassword("");
+                    setIsAdmin(false); setPassword("");
                 } else {
                     const pwd = prompt("請輸入管理員密碼：");
                     if (pwd) {
-                        setIsAdmin(true);
-                        setPassword(pwd);
-                        alert("已進入管理員模式！可以開始新增資料了。");
+                        setIsAdmin(true); setPassword(pwd);
+                        alert("已進入管理員模式！可以新增、編輯或刪除資料了。");
                     }
+                }
+            };
+
+            const handleOpenModalNew = () => {
+                setFormData({ _rowNumber: null, name: "", date: new Date().toISOString().slice(0, 10), method: "", w: "", b: "", y: "", r: "", imageUrl: "" });
+                setIsModalOpen(true);
+            };
+
+            const handleOpenModalRecord = (flower) => {
+                setFormData({ _rowNumber: null, name: flower.name, date: new Date().toISOString().slice(0, 10), method: "", w: "", b: "", y: "", r: "", imageUrl: flower.imageUrl });
+                setIsModalOpen(true);
+            };
+
+            // ★ 點擊編輯按鈕，載入紀錄資料
+            const handleEditRecord = (flowerName, record) => {
+                setFormData({
+                    _rowNumber: record._rowNumber,
+                    name: flowerName,
+                    date: record.date,
+                    method: record.method,
+                    w: record.w, b: record.b, y: record.y, r: record.r,
+                    imageUrl: record.imageUrl || ""
+                });
+                setIsModalOpen(true);
+            };
+
+            // ★ 點擊刪除按鈕
+            const handleDeleteRecord = async (rowNumber) => {
+                if (!confirm("確定要刪除這筆紀錄嗎？這將會同步從 Google 試算表中移除！")) return;
+                setIsSubmitting(true);
+                try {
+                    const res = await fetch(API_URL, {
+                        method: 'POST',
+                        body: JSON.stringify({ action: 'delete', rowNumber: rowNumber, password: password })
+                    });
+                    const result = await res.json();
+                    if (result.status === 'success') {
+                        await fetchData(); // 成功後立即刷新畫面
+                    } else {
+                        alert("錯誤：" + result.message);
+                    }
+                } catch (error) {
+                    alert("刪除失敗，請稍後再試。");
+                } finally {
+                    setIsSubmitting(false);
                 }
             };
 
@@ -132,6 +168,8 @@
                 setIsSubmitting(true);
 
                 const payload = {
+                    action: formData._rowNumber ? 'edit' : 'add', // 有行號就是編輯，沒行號就是新增
+                    rowNumber: formData._rowNumber,
                     password: password,
                     name: formData.name.trim(),
                     date: formData.date,
@@ -144,16 +182,11 @@
                 };
 
                 try {
-                    const res = await fetch(API_URL, {
-                        method: 'POST',
-                        body: JSON.stringify(payload)
-                    });
+                    const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) });
                     const result = await res.json();
 
                     if (result.status === 'success') {
                         setIsModalOpen(false);
-                        setFormData({ name: "", date: new Date().toISOString().slice(0, 10), method: "", w: "", b: "", y: "", r: "", imageUrl: "" });
-                        // 重新抓取最新資料
                         await fetchData();
                     } else {
                         alert("錯誤：" + result.message);
@@ -186,7 +219,7 @@
                     <header className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg sticky top-0 z-20">
                         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                                <Icon path={ICONS.Leaf} className="text-emerald-100" />
+                                <Icon path={ICONS.Flower} className="text-emerald-100" />
                                 <h1 className="text-xl font-black tracking-wide">Pikmin 花朵變異圖鑑</h1>
                             </div>
                             <div className="flex gap-3 items-center">
@@ -194,7 +227,7 @@
                                     <Icon path={isAdmin ? ICONS.Unlock : ICONS.Lock} />
                                 </button>
                                 {isAdmin && (
-                                    <button onClick={() => setIsModalOpen(true)} className="bg-white text-emerald-700 hover:bg-emerald-50 px-4 py-2 rounded-full font-bold flex items-center gap-1 text-sm shadow-sm transition-transform active:scale-95">
+                                    <button onClick={handleOpenModalNew} className="bg-white text-emerald-700 hover:bg-emerald-50 px-4 py-2 rounded-full font-bold flex items-center gap-1 text-sm shadow-sm transition-transform active:scale-95 disabled:opacity-50" disabled={isSubmitting}>
                                         <Icon path={ICONS.Plus} /> 新增紀錄
                                     </button>
                                 )}
@@ -241,7 +274,7 @@
                                                 </div>
                                             ) : (
                                                 <div className="h-20 w-full bg-gradient-to-r from-emerald-50 to-teal-50 flex items-center justify-center border-b border-emerald-100/50">
-                                                    <Icon path={ICONS.Leaf} className="text-emerald-200 opacity-60 w-8 h-8" />
+                                                    <Icon path={ICONS.Flower} className="text-emerald-200 opacity-60 w-8 h-8" />
                                                 </div>
                                             )}
                                             
@@ -304,9 +337,18 @@
                                                                         <div className="mt-4 pt-3 border-t border-slate-100 space-y-1.5">
                                                                             <p className="text-[10px] font-bold text-slate-400 mb-2">實驗明細：</p>
                                                                             {stats.list.map((r, i) => (
-                                                                                <div key={i} className="flex justify-between items-center text-xs font-bold text-slate-500 bg-slate-50 px-2 py-1.5 rounded-lg">
+                                                                                <div key={i} className="flex justify-between items-center text-xs font-bold text-slate-500 bg-slate-50 px-2 py-1.5 rounded-lg border border-transparent hover:border-emerald-100 hover:bg-emerald-50 transition-colors">
                                                                                     <span>📅 {r.date}</span>
-                                                                                    <span className="tracking-widest">⚪{r.w} 🔵{r.b} 🟡{r.y} 🔴{r.r}</span>
+                                                                                    <div className="flex items-center gap-2">
+                                                                                        <span className="tracking-widest">⚪{r.w} 🔵{r.b} 🟡{r.y} 🔴{r.r}</span>
+                                                                                        {/* ★ 編輯與刪除按鈕加回來了！ */}
+                                                                                        {isAdmin && (
+                                                                                            <div className="flex gap-1 ml-2 pl-2 border-l border-slate-200">
+                                                                                                <button onClick={() => handleEditRecord(item.name, r)} disabled={isSubmitting} className="text-emerald-500 hover:text-emerald-700 bg-white p-1 rounded shadow-sm border border-slate-100 disabled:opacity-50"><Icon path={ICONS.Edit2}/></button>
+                                                                                                <button onClick={() => handleDeleteRecord(r._rowNumber)} disabled={isSubmitting} className="text-red-400 hover:text-red-600 bg-white p-1 rounded shadow-sm border border-slate-100 disabled:opacity-50"><Icon path={ICONS.Trash2}/></button>
+                                                                                            </div>
+                                                                                        )}
+                                                                                    </div>
                                                                                 </div>
                                                                             ))}
                                                                         </div>
@@ -315,9 +357,9 @@
                                                             })
                                                         )}
                                                         {isAdmin && (
-                                                            <div className="text-center bg-yellow-50 text-yellow-700 text-xs font-bold p-3 rounded-lg">
-                                                                💡 提示：若要修改或刪除明細，請直接至 Google 試算表操作。
-                                                            </div>
+                                                            <button onClick={() => handleOpenModalRecord(item)} disabled={isSubmitting} className="w-full py-3 bg-emerald-50 text-emerald-700 font-bold text-sm rounded-xl flex justify-center items-center gap-1.5 hover:bg-emerald-100 transition-colors border border-emerald-200 border-dashed disabled:opacity-50">
+                                                                <Icon path={ICONS.Plus}/> 新增「{item.name}」的實驗紀錄
+                                                            </button>
                                                         )}
                                                     </div>
                                                 )}
@@ -329,12 +371,14 @@
                         )}
                     </main>
 
+                    {/* 編輯 / 新增 Modal */}
                     {isModalOpen && (
                         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                             <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md flex flex-col max-h-[90vh]">
                                 <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center">
                                     <h3 className="text-xl font-black text-emerald-700 flex items-center gap-2">
-                                        <Icon path={ICONS.Plus} /> 新增花朵紀錄
+                                        <Icon path={formData._rowNumber ? ICONS.Edit2 : ICONS.Plus} /> 
+                                        {formData._rowNumber ? `編輯實驗紀錄` : `新增花朵紀錄`}
                                     </h3>
                                     <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 bg-slate-100 p-1.5 rounded-full"><Icon path={ICONS.X} /></button>
                                 </div>
@@ -343,6 +387,7 @@
                                     <div className="bg-emerald-50 p-4 rounded-2xl space-y-4 border border-emerald-100">
                                         <div>
                                             <label className="text-sm font-black text-slate-700 block mb-1.5">1. 花朵名稱 (必填)</label>
+                                            {/* 如果是編輯模式，不建議改名字，但還是開放修改 */}
                                             <input list="flower-opts" required className="w-full border-0 rounded-xl p-3 text-base shadow-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="例如：油菜花" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
                                             <datalist id="flower-opts">
                                                 {availableFlowerNames.map(f => <option key={f} value={f} />)}
@@ -356,7 +401,7 @@
                                                 <div className="absolute left-3 top-3.5 text-slate-400"><Icon path={ICONS.Link} /></div>
                                                 <input type="url" placeholder="https://i.imgur.com/..." className="w-full border-0 rounded-xl pl-9 pr-3 py-3 text-sm shadow-sm focus:ring-2 focus:ring-emerald-500 outline-none" value={formData.imageUrl} onChange={e => setFormData({ ...formData, imageUrl: e.target.value })} />
                                             </div>
-                                            <p className="text-[10px] text-slate-400 mt-1.5 leading-tight">如果這朵花已經有圖片，留空就會沿用舊圖。若填寫新網址，會覆蓋舊有圖片。</p>
+                                            <p className="text-[10px] text-slate-400 mt-1.5 leading-tight">如果這朵花已經有圖片，留空會自動沿用。填寫新網址則會覆蓋。</p>
                                         </div>
                                     </div>
 
@@ -367,17 +412,17 @@
                                             <div><label className="text-xs font-bold text-slate-500 block mb-1">種法 (Tag)</label><input type="text" required placeholder="例如: 雙色+櫻花" className="w-full border-0 shadow-sm rounded-xl p-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500" value={formData.method} onChange={e => setFormData({ ...formData, method: e.target.value })} /></div>
                                         </div>
                                         <div className="grid grid-cols-4 gap-3 pt-2">
-                                            <div><label className="text-sm font-black text-slate-400 block mb-1.5 text-center">白</label><input type="number" min="0" className="w-full border-0 shadow-sm rounded-xl p-2.5 text-base text-center outline-none focus:ring-2 focus:ring-slate-300" value={formData.w} onChange={e => setFormData({...formData, w: e.target.value})} /></div>
-                                            <div><label className="text-sm font-black text-blue-500 block mb-1.5 text-center">藍</label><input type="number" min="0" className="w-full border-0 shadow-sm rounded-xl p-2.5 text-base text-center text-blue-700 bg-blue-50 outline-none focus:ring-2 focus:ring-blue-300" value={formData.b} onChange={e => setFormData({...formData, b: e.target.value})} /></div>
-                                            <div><label className="text-sm font-black text-yellow-500 block mb-1.5 text-center">黃</label><input type="number" min="0" className="w-full border-0 shadow-sm rounded-xl p-2.5 text-base text-center text-yellow-700 bg-yellow-50 outline-none focus:ring-2 focus:ring-yellow-300" value={formData.y} onChange={e => setFormData({...formData, y: e.target.value})} /></div>
-                                            <div><label className="text-sm font-black text-red-500 block mb-1.5 text-center">紅</label><input type="number" min="0" className="w-full border-0 shadow-sm rounded-xl p-2.5 text-base text-center text-red-700 bg-red-50 outline-none focus:ring-2 focus:ring-red-300" value={formData.r} onChange={e => setFormData({...formData, r: e.target.value})} /></div>
+                                            <div><label className="text-sm font-black text-slate-400 block mb-1.5 text-center">白</label><input type="number" min="0" required className="w-full border-0 shadow-sm rounded-xl p-2.5 text-base text-center outline-none focus:ring-2 focus:ring-slate-300" value={formData.w} onChange={e => setFormData({...formData, w: e.target.value})} /></div>
+                                            <div><label className="text-sm font-black text-blue-500 block mb-1.5 text-center">藍</label><input type="number" min="0" required className="w-full border-0 shadow-sm rounded-xl p-2.5 text-base text-center text-blue-700 bg-blue-50 outline-none focus:ring-2 focus:ring-blue-300" value={formData.b} onChange={e => setFormData({...formData, b: e.target.value})} /></div>
+                                            <div><label className="text-sm font-black text-yellow-500 block mb-1.5 text-center">黃</label><input type="number" min="0" required className="w-full border-0 shadow-sm rounded-xl p-2.5 text-base text-center text-yellow-700 bg-yellow-50 outline-none focus:ring-2 focus:ring-yellow-300" value={formData.y} onChange={e => setFormData({...formData, y: e.target.value})} /></div>
+                                            <div><label className="text-sm font-black text-red-500 block mb-1.5 text-center">紅</label><input type="number" min="0" required className="w-full border-0 shadow-sm rounded-xl p-2.5 text-base text-center text-red-700 bg-red-50 outline-none focus:ring-2 focus:ring-red-300" value={formData.r} onChange={e => setFormData({...formData, r: e.target.value})} /></div>
                                         </div>
                                     </div>
 
                                     <div className="pt-2 flex gap-3">
                                         <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl transition-colors">取消</button>
                                         <button type="submit" disabled={isSubmitting} className="flex-[2] py-3.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-black rounded-xl shadow-lg hover:shadow-xl transition-all active:scale-95 disabled:opacity-50">
-                                            {isSubmitting ? '資料傳送中...' : '確認儲存並寫入'}
+                                            {isSubmitting ? '資料傳送中...' : (formData._rowNumber ? '儲存修改' : '確認新增')}
                                         </button>
                                     </div>
                                 </form>
