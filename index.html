@@ -34,7 +34,8 @@
             Link: <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71 M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />,
             Edit2: <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />,
             Trash2: <path d="M3 6h18 M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6 M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2 M10 11v6 M14 11v6" />,
-            MapPin: <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+            MapPin: <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />,
+            Locate: <Fragment><circle cx="12" cy="12" r="3" /><path d="M19 12h2M3 12h2M12 19v2M12 3v2M16.24 16.24A6 6 0 1 0 7.76 7.76a6 6 0 0 0 8.48 8.48z" /></Fragment>
         };
 
         const App = () => {
@@ -48,15 +49,15 @@
             const [isModalOpen, setIsModalOpen] = useState(false);
             const [isSubmitting, setIsSubmitting] = useState(false);
             
-            // 新增 lat, lng, 還有一個專門顯示國家的變數
             const [formData, setFormData] = useState({
                 _rowNumber: null, name: "", date: new Date().toISOString().slice(0, 10), 
                 method: "", w: "", b: "", y: "", r: "", imageUrl: "", lat: "", lng: ""
             });
             const [locationCountry, setLocationCountry] = useState("");
             const [isDetectingLocation, setIsDetectingLocation] = useState(false);
+            const [isFetchingGPS, setIsFetchingGPS] = useState(false);
 
-            // ★ 自動抓取國家的函數
+            // 自動抓取國家的函數
             const detectCountry = useCallback(async (lat, lng) => {
                 if (!lat || !lng) {
                     setLocationCountry("");
@@ -78,7 +79,7 @@
                 }
             }, []);
 
-            // 監聽經緯度的變化，有輸入就自動查國家
+            // 監聽經緯度的變化
             useEffect(() => {
                 const timeoutId = setTimeout(() => {
                     if (formData.lat && formData.lng) {
@@ -86,10 +87,31 @@
                     } else {
                         setLocationCountry("");
                     }
-                }, 800); // 避免打字太快一直送請求，設定延遲
+                }, 800);
                 return () => clearTimeout(timeoutId);
             }, [formData.lat, formData.lng, detectCountry]);
 
+            // ★ 新增：呼叫裝置的 GPS 定位
+            const handleGetLocation = () => {
+                if (!navigator.geolocation) {
+                    alert("你的瀏覽器不支援自動定位功能喔！");
+                    return;
+                }
+                setIsFetchingGPS(true);
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const newLat = position.coords.latitude.toFixed(6);
+                        const newLng = position.coords.longitude.toFixed(6);
+                        setFormData(prev => ({ ...prev, lat: newLat, lng: newLng }));
+                        setIsFetchingGPS(false);
+                    },
+                    (error) => {
+                        alert("無法取得位置！請確認你是否已經允許這個網頁存取你的定位權限。");
+                        setIsFetchingGPS(false);
+                    },
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                );
+            };
 
             const fetchData = async () => {
                 setLoading(true);
@@ -128,25 +150,7 @@
                         return totalB - totalA;
                     });
 
-                    // 取得資料後，幫每一筆紀錄把國家查出來 (如果是首頁展示用)
-                    // 為了不讓畫面太慢，我們只在有經緯度的紀錄加上查好的國家
-                    const updatedArray = await Promise.all(flowerArray.map(async (flower) => {
-                        const updatedRecords = await Promise.all(flower.records.map(async (r) => {
-                            if (r.lat && r.lng) {
-                                try {
-                                    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${r.lat}&lon=${r.lng}&zoom=3&accept-language=zh-TW`);
-                                    const data = await res.json();
-                                    return { ...r, country: data?.address?.country || '未知' };
-                                } catch (e) {
-                                    return { ...r, country: '未知' };
-                                }
-                            }
-                            return r;
-                        }));
-                        return { ...flower, records: updatedRecords };
-                    }));
-
-                    setFlowers(updatedArray);
+                    setFlowers(flowerArray);
                 } catch (error) {
                     alert("資料載入失敗，請檢查網路或 API 網址設定！");
                 } finally {
@@ -411,12 +415,10 @@
                                                                                             )}
                                                                                         </div>
                                                                                     </div>
-                                                                                    {/* ★ 顯示國家 */}
                                                                                     {(r.lat && r.lng) && (
                                                                                         <div className="flex items-center gap-1 text-[10px] text-slate-400 bg-white w-fit px-2 py-1 rounded border border-slate-100">
                                                                                             <Icon path={ICONS.MapPin} className="w-3 h-3 text-emerald-500" />
-                                                                                            <span>{r.country}</span>
-                                                                                            <a href={`https://www.google.com/maps/search/?api=1&query=${r.lat},${r.lng}`} target="_blank" rel="noreferrer" className="ml-1 text-blue-500 hover:underline">({r.lat}, {r.lng})</a>
+                                                                                            <a href={`https://www.google.com/maps/search/?api=1&query=${r.lat},${r.lng}`} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">({r.lat}, {r.lng})</a>
                                                                                         </div>
                                                                                     )}
                                                                                 </div>
@@ -486,10 +488,17 @@
                                         </div>
                                     </div>
 
-                                    {/* ★ 新增地點資訊 */}
+                                    {/* ★ 改良版地點資訊：新增「一鍵獲取」按鈕 */}
                                     <div className="bg-sky-50 p-4 rounded-2xl space-y-4 border border-sky-100">
-                                        <h4 className="text-sm font-black text-sky-700 border-b border-sky-200 pb-2">4. 地點資訊 (選填)</h4>
-                                        <div className="grid grid-cols-2 gap-4">
+                                        <div className="flex justify-between items-center border-b border-sky-200 pb-2">
+                                            <h4 className="text-sm font-black text-sky-700">4. 地點資訊 (選填)</h4>
+                                            <button type="button" onClick={handleGetLocation} disabled={isFetchingGPS} className="bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-sm transition-colors disabled:opacity-50">
+                                                <Icon path={ICONS.Locate} /> 
+                                                {isFetchingGPS ? "定位中..." : "自動抓取定位"}
+                                            </button>
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-2 gap-4 mt-2">
                                             <div>
                                                 <label className="text-xs font-bold text-sky-600 block mb-1">緯度 (Lat)</label>
                                                 <input type="text" placeholder="例如: 25.189888" className="w-full border-0 shadow-sm rounded-xl p-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-500" value={formData.lat} onChange={e => setFormData({ ...formData, lat: e.target.value })} />
@@ -499,7 +508,7 @@
                                                 <input type="text" placeholder="例如: 121.488269" className="w-full border-0 shadow-sm rounded-xl p-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-500" value={formData.lng} onChange={e => setFormData({ ...formData, lng: e.target.value })} />
                                             </div>
                                         </div>
-                                        {/* 顯示自動判斷的國家 */}
+                                        
                                         <div className="flex items-center gap-2 mt-2">
                                             <Icon path={ICONS.MapPin} className="text-sky-500 w-4 h-4" />
                                             <span className="text-xs font-bold text-sky-700">自動辨識國家：</span>
