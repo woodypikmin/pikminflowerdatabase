@@ -57,7 +57,7 @@
             const [isDetectingLocation, setIsDetectingLocation] = useState(false);
             const [isFetchingGPS, setIsFetchingGPS] = useState(false);
 
-            // ★ 改用 BigDataCloud API，穩定不封鎖！
+            // 改用 BigDataCloud API，不會被輕易封鎖
             const detectCountry = useCallback(async (lat, lng) => {
                 if (!lat || !lng) {
                     setLocationCountry("");
@@ -79,6 +79,7 @@
                 }
             }, []);
 
+            // 監聽經緯度的變化，自動查國家
             useEffect(() => {
                 const timeoutId = setTimeout(() => {
                     if (formData.lat && formData.lng) {
@@ -90,7 +91,7 @@
                 return () => clearTimeout(timeoutId);
             }, [formData.lat, formData.lng, detectCountry]);
 
-            // 抓取「手機現在位置」的功能
+            // 自動定位手機GPS
             const handleGetLocation = () => {
                 if (!navigator.geolocation) {
                     alert("你的瀏覽器不支援自動定位功能喔！");
@@ -105,7 +106,7 @@
                         setIsFetchingGPS(false);
                     },
                     (error) => {
-                        alert("無法取得位置！請確認你是否已經允許這個網頁存取你的定位權限。");
+                        alert("無法取得位置！請確認你是否已經允許定位權限。");
                         setIsFetchingGPS(false);
                     },
                     { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
@@ -139,7 +140,7 @@
                                 imageUrl: row['圖片網址'] || '',
                                 lat: row['緯度'] || '',
                                 lng: row['經度'] || '',
-                                country: row['國家'] || '' // 從資料庫讀出國家
+                                country: row['國家'] || '' // 確實從表單中把國家讀出來
                             });
                         }
                     });
@@ -174,7 +175,7 @@
                     const pwd = prompt("請輸入管理員密碼：");
                     if (pwd) {
                         setIsAdmin(true); setPassword(pwd);
-                        alert("已進入管理員模式！可以新增、編輯或刪除資料了。");
+                        alert("已進入管理員模式！");
                     }
                 }
             };
@@ -231,22 +232,22 @@
                 e.preventDefault();
                 setIsSubmitting(true);
 
-                // ★ 修復 trim() 當機的問題：加上 String() 強制轉文字
+                // ★ 使用 String().trim() 避免數字 trim() 報錯
                 const payload = {
                     action: formData._rowNumber ? 'edit' : 'add',
                     rowNumber: formData._rowNumber,
                     password: password,
-                    name: String(formData.name).trim(),
+                    name: String(formData.name || "").trim(),
                     date: formData.date,
-                    method: String(formData.method).trim(),
+                    method: String(formData.method || "").trim(),
                     w: parseInt(formData.w) || 0,
                     b: parseInt(formData.b) || 0,
                     y: parseInt(formData.y) || 0,
                     r: parseInt(formData.r) || 0,
-                    imageUrl: String(formData.imageUrl).trim(),
+                    imageUrl: String(formData.imageUrl || "").trim(),
                     lat: String(formData.lat || "").trim(),
                     lng: String(formData.lng || "").trim(),
-                    country: locationCountry // ★ 將查好的國家一併送出
+                    country: locationCountry // 將查好的國家一併送出
                 };
 
                 try {
@@ -396,13 +397,13 @@
                                                                         {renderProgressBar(stats.w, stats.b, stats.y, stats.r)}
                                                                         
                                                                         <div className="flex justify-between text-sm font-extrabold text-slate-500 mt-3 mb-4">
-                                                                            <span className="text-slate-500">⚪ {stTotal ? ((stats.w/stTotal)*100).toFixed(1) : "0.0"}% <span className="text-[10px] font-medium ml-0.5">({stats.w})</span></span>
-                                                                            <span className="text-blue-500">🔵 {stTotal ? ((stats.b/stTotal)*100).toFixed(1) : "0.0"}% <span className="text-[10px] font-medium ml-0.5">({stats.b})</span></span>
-                                                                            <span className="text-yellow-600">🟡 {stTotal ? ((stats.y/stTotal)*100).toFixed(1) : "0.0"}% <span className="text-[10px] font-medium ml-0.5">({stats.y})</span></span>
-                                                                            <span className="text-red-500">🔴 {stTotal ? ((stats.r/stTotal)*100).toFixed(1) : "0.0"}% <span className="text-[10px] font-medium ml-0.5">({stats.r})</span></span>
+                                                                            <span className="text-slate-500">⚪ {stTotal ? ((stats.w/stTotal)*100).toFixed(1) : "0.0"}%</span>
+                                                                            <span className="text-blue-500">🔵 {stTotal ? ((stats.b/stTotal)*100).toFixed(1) : "0.0"}%</span>
+                                                                            <span className="text-yellow-600">🟡 {stTotal ? ((stats.y/stTotal)*100).toFixed(1) : "0.0"}%</span>
+                                                                            <span className="text-red-500">🔴 {stTotal ? ((stats.r/stTotal)*100).toFixed(1) : "0.0"}%</span>
                                                                         </div>
 
-                                                                        <div className="mt-4 pt-3 border-t border-slate-100 space-y-1.5">
+                                                                        <div className="mt-4 pt-3 border-t border-slate-100 space-y-2">
                                                                             <p className="text-[10px] font-bold text-slate-400 mb-2">實驗明細：</p>
                                                                             {stats.list.map((r, i) => (
                                                                                 <div key={i} className="flex flex-col bg-slate-50 p-2.5 rounded-lg border border-transparent hover:border-emerald-100 hover:bg-emerald-50 transition-colors">
@@ -418,12 +419,16 @@
                                                                                             )}
                                                                                         </div>
                                                                                     </div>
-                                                                                    {/* ★ 在清單顯示已經從資料庫載入的「國家」 */}
-                                                                                    {(r.lat && r.lng) && (
-                                                                                        <div className="flex items-center gap-1 text-[10px] text-slate-400 bg-white w-fit px-2 py-1 rounded border border-slate-100">
+                                                                                    {/* ★ 在清單顯示國家資訊 */}
+                                                                                    {(r.country || (r.lat && r.lng)) && (
+                                                                                        <div className="flex items-center gap-1 text-[10px] text-slate-500 bg-white w-fit px-2 py-1 rounded border border-slate-100">
                                                                                             <Icon path={ICONS.MapPin} className="w-3 h-3 text-emerald-500" />
-                                                                                            <span>{r.country || "無國家資訊"}</span>
-                                                                                            <a href={`https://www.google.com/maps/search/?api=1&query=$$${r.lat},${r.lng}`} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline ml-1">({r.lat}, {r.lng})</a>
+                                                                                            {r.country && <span className="font-bold text-emerald-700">{r.country}</span>}
+                                                                                            {(r.lat && r.lng) && (
+                                                                                                <a href={`https://www.google.com/maps/search/?api=1&query=${r.lat},${r.lng}`} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline ml-1">
+                                                                                                    ({r.lat}, {r.lng})
+                                                                                                </a>
+                                                                                            )}
                                                                                         </div>
                                                                                     )}
                                                                                 </div>
@@ -501,7 +506,7 @@
                                                 {isFetchingGPS ? "定位中..." : "抓取我現在的手機GPS定位"}
                                             </button>
                                         </div>
-                                        <p className="text-[10px] text-sky-600/80 -mt-2">如果你只是要補登錄過去的紀錄，請直接在下方手動輸入經緯度，系統會自動翻譯成國家。</p>
+                                        <p className="text-[10px] text-sky-600/80 -mt-2">直接在下方輸入經緯度，系統也會自動幫你翻譯成國家。</p>
                                         
                                         <div className="grid grid-cols-2 gap-4 mt-2">
                                             <div>
