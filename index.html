@@ -90,6 +90,7 @@
                 return () => clearTimeout(timeoutId);
             }, [formData.lat, formData.lng, detectCountry]);
 
+            // 抓取「手機現在位置」的功能
             const handleGetLocation = () => {
                 if (!navigator.geolocation) {
                     alert("你的瀏覽器不支援自動定位功能喔！");
@@ -138,6 +139,7 @@
                                 imageUrl: row['圖片網址'] || '',
                                 lat: row['緯度'] || '',
                                 lng: row['經度'] || '',
+                                country: row['國家'] || '' // 從資料庫讀出國家
                             });
                         }
                     });
@@ -200,6 +202,7 @@
                     lat: record.lat || "",
                     lng: record.lng || ""
                 });
+                setLocationCountry(record.country || "");
                 setIsModalOpen(true);
             };
 
@@ -228,20 +231,22 @@
                 e.preventDefault();
                 setIsSubmitting(true);
 
+                // ★ 修復 trim() 當機的問題：加上 String() 強制轉文字
                 const payload = {
                     action: formData._rowNumber ? 'edit' : 'add',
                     rowNumber: formData._rowNumber,
                     password: password,
-                    name: formData.name.trim(),
+                    name: String(formData.name).trim(),
                     date: formData.date,
-                    method: formData.method.trim(),
+                    method: String(formData.method).trim(),
                     w: parseInt(formData.w) || 0,
                     b: parseInt(formData.b) || 0,
                     y: parseInt(formData.y) || 0,
                     r: parseInt(formData.r) || 0,
-                    imageUrl: formData.imageUrl.trim(),
-                    lat: formData.lat.trim(),
-                    lng: formData.lng.trim()
+                    imageUrl: String(formData.imageUrl).trim(),
+                    lat: String(formData.lat || "").trim(),
+                    lng: String(formData.lng || "").trim(),
+                    country: locationCountry // ★ 將查好的國家一併送出
                 };
 
                 try {
@@ -413,10 +418,12 @@
                                                                                             )}
                                                                                         </div>
                                                                                     </div>
+                                                                                    {/* ★ 在清單顯示已經從資料庫載入的「國家」 */}
                                                                                     {(r.lat && r.lng) && (
                                                                                         <div className="flex items-center gap-1 text-[10px] text-slate-400 bg-white w-fit px-2 py-1 rounded border border-slate-100">
                                                                                             <Icon path={ICONS.MapPin} className="w-3 h-3 text-emerald-500" />
-                                                                                            <a href={`https://www.google.com/maps/search/?api=1&query=$${r.lat},${r.lng}`} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">({r.lat}, {r.lng})</a>
+                                                                                            <span>{r.country || "無國家資訊"}</span>
+                                                                                            <a href={`https://www.google.com/maps/search/?api=1&query=$$${r.lat},${r.lng}`} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline ml-1">({r.lat}, {r.lng})</a>
                                                                                         </div>
                                                                                     )}
                                                                                 </div>
@@ -491,9 +498,10 @@
                                             <h4 className="text-sm font-black text-sky-700">4. 地點資訊 (選填)</h4>
                                             <button type="button" onClick={handleGetLocation} disabled={isFetchingGPS} className="bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-sm transition-colors disabled:opacity-50">
                                                 <Icon path={ICONS.Locate} /> 
-                                                {isFetchingGPS ? "定位中..." : "自動抓取定位"}
+                                                {isFetchingGPS ? "定位中..." : "抓取我現在的手機GPS定位"}
                                             </button>
                                         </div>
+                                        <p className="text-[10px] text-sky-600/80 -mt-2">如果你只是要補登錄過去的紀錄，請直接在下方手動輸入經緯度，系統會自動翻譯成國家。</p>
                                         
                                         <div className="grid grid-cols-2 gap-4 mt-2">
                                             <div>
