@@ -17,6 +17,13 @@
 
         const API_URL = "https://script.google.com/macros/s/AKfycbwuW-ao7uazpgYnjKH8Tlk1tk2f0vn5CQN7KzJzTktSzlPiO4MwJy9x1eKYMZxKSAFdQQ/exec";
 
+        // 取得台灣時間的今天日期
+        const getLocalISODate = () => {
+            const d = new Date();
+            d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+            return d.toISOString().slice(0, 10);
+        };
+
         const Icon = ({ path, className = "" }) => (
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
                 {path}
@@ -50,14 +57,13 @@
             const [isSubmitting, setIsSubmitting] = useState(false);
             
             const [formData, setFormData] = useState({
-                _rowNumber: null, name: "", date: new Date().toISOString().slice(0, 10), 
+                _rowNumber: null, name: "", date: getLocalISODate(), 
                 method: "", w: "", b: "", y: "", r: "", imageUrl: "", lat: "", lng: ""
             });
             const [locationCountry, setLocationCountry] = useState("");
             const [isDetectingLocation, setIsDetectingLocation] = useState(false);
             const [isFetchingGPS, setIsFetchingGPS] = useState(false);
 
-            // 改用 BigDataCloud API，不會被輕易封鎖
             const detectCountry = useCallback(async (lat, lng) => {
                 if (!lat || !lng) {
                     setLocationCountry("");
@@ -79,7 +85,6 @@
                 }
             }, []);
 
-            // 監聽經緯度的變化，自動查國家
             useEffect(() => {
                 const timeoutId = setTimeout(() => {
                     if (formData.lat && formData.lng) {
@@ -91,7 +96,6 @@
                 return () => clearTimeout(timeoutId);
             }, [formData.lat, formData.lng, detectCountry]);
 
-            // 自動定位手機GPS
             const handleGetLocation = () => {
                 if (!navigator.geolocation) {
                     alert("你的瀏覽器不支援自動定位功能喔！");
@@ -106,7 +110,7 @@
                         setIsFetchingGPS(false);
                     },
                     (error) => {
-                        alert("無法取得位置！請確認你是否已經允許定位權限。");
+                        alert("無法取得位置！請確認你是否已經允許這個網頁存取你的定位權限。");
                         setIsFetchingGPS(false);
                     },
                     { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
@@ -129,9 +133,12 @@
                         if (row['圖片網址']) grouped[name].imageUrl = row['圖片網址'];
                         
                         if (row['種法']) {
+                            // 修正日期顯示，直接讀取 Excel 畫面的文字，並轉換成標準格式
+                            let cleanDate = row['日期'] ? String(row['日期']).replace(/\//g, '-').split('T')[0] : '無日期';
+
                             grouped[name].records.push({
                                 _rowNumber: row['_rowNumber'],
-                                date: row['日期'] || '',
+                                date: cleanDate,
                                 method: row['種法'],
                                 w: Number(row['白']) || 0,
                                 b: Number(row['藍']) || 0,
@@ -140,7 +147,7 @@
                                 imageUrl: row['圖片網址'] || '',
                                 lat: row['緯度'] || '',
                                 lng: row['經度'] || '',
-                                country: row['國家'] || '' // 確實從表單中把國家讀出來
+                                country: row['國家'] || ''
                             });
                         }
                     });
@@ -175,19 +182,19 @@
                     const pwd = prompt("請輸入管理員密碼：");
                     if (pwd) {
                         setIsAdmin(true); setPassword(pwd);
-                        alert("已進入管理員模式！");
+                        alert("已進入管理員模式！可以新增、編輯或刪除資料了。");
                     }
                 }
             };
 
             const handleOpenModalNew = () => {
-                setFormData({ _rowNumber: null, name: "", date: new Date().toISOString().slice(0, 10), method: "", w: "", b: "", y: "", r: "", imageUrl: "", lat: "", lng: "" });
+                setFormData({ _rowNumber: null, name: "", date: getLocalISODate(), method: "", w: "", b: "", y: "", r: "", imageUrl: "", lat: "", lng: "" });
                 setLocationCountry("");
                 setIsModalOpen(true);
             };
 
             const handleOpenModalRecord = (flower) => {
-                setFormData({ _rowNumber: null, name: flower.name, date: new Date().toISOString().slice(0, 10), method: "", w: "", b: "", y: "", r: "", imageUrl: flower.imageUrl, lat: "", lng: "" });
+                setFormData({ _rowNumber: null, name: flower.name, date: getLocalISODate(), method: "", w: "", b: "", y: "", r: "", imageUrl: flower.imageUrl, lat: "", lng: "" });
                 setLocationCountry("");
                 setIsModalOpen(true);
             };
@@ -232,7 +239,6 @@
                 e.preventDefault();
                 setIsSubmitting(true);
 
-                // ★ 使用 String().trim() 避免數字 trim() 報錯
                 const payload = {
                     action: formData._rowNumber ? 'edit' : 'add',
                     rowNumber: formData._rowNumber,
@@ -247,7 +253,7 @@
                     imageUrl: String(formData.imageUrl || "").trim(),
                     lat: String(formData.lat || "").trim(),
                     lng: String(formData.lng || "").trim(),
-                    country: locationCountry // 將查好的國家一併送出
+                    country: locationCountry
                 };
 
                 try {
@@ -330,8 +336,7 @@
                                         if (!acc[r.method]) acc[r.method] = { w:0, b:0, y:0, r:0, count:0, list:[] };
                                         acc[r.method].w += r.w; acc[r.method].b += r.b; acc[r.method].y += r.y; acc[r.method].r += r.r;
                                         acc[r.method].count += 1;
-                                        const cleanDate = r.date ? new Date(r.date).toISOString().slice(0, 10) : '無日期';
-                                        acc[r.method].list.push({ ...r, date: cleanDate });
+                                        acc[r.method].list.push(r);
                                         return acc;
                                     }, {});
 
@@ -419,7 +424,8 @@
                                                                                             )}
                                                                                         </div>
                                                                                     </div>
-                                                                                    {/* ★ 在清單顯示國家資訊 */}
+                                                                                    
+                                                                                    {/* 確保有經緯度或國家才會顯示這一行 */}
                                                                                     {(r.country || (r.lat && r.lng)) && (
                                                                                         <div className="flex items-center gap-1 text-[10px] text-slate-500 bg-white w-fit px-2 py-1 rounded border border-slate-100">
                                                                                             <Icon path={ICONS.MapPin} className="w-3 h-3 text-emerald-500" />
@@ -503,7 +509,7 @@
                                             <h4 className="text-sm font-black text-sky-700">4. 地點資訊 (選填)</h4>
                                             <button type="button" onClick={handleGetLocation} disabled={isFetchingGPS} className="bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-sm transition-colors disabled:opacity-50">
                                                 <Icon path={ICONS.Locate} /> 
-                                                {isFetchingGPS ? "定位中..." : "抓取我現在的手機GPS定位"}
+                                                {isFetchingGPS ? "定位中..." : "自動抓取定位"}
                                             </button>
                                         </div>
                                         <p className="text-[10px] text-sky-600/80 -mt-2">直接在下方輸入經緯度，系統也會自動幫你翻譯成國家。</p>
