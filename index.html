@@ -133,7 +133,6 @@
                         if (row['圖片網址']) grouped[name].imageUrl = row['圖片網址'];
                         
                         if (row['種法']) {
-                            // 修正日期顯示，直接讀取 Excel 畫面的文字，並轉換成標準格式
                             let cleanDate = row['日期'] ? String(row['日期']).replace(/\//g, '-').split('T')[0] : '無日期';
 
                             grouped[name].records.push({
@@ -425,18 +424,11 @@
                                                                                         </div>
                                                                                     </div>
                                                                                     
-                                                                                    {/* ★ 確保有國家或經緯度才會顯示這一行 */}
-                                                                                    {(r.country || (isAdmin && r.lat && r.lng)) && (
+                                                                                    {/* ★ 只顯示國家名稱的純文字 */}
+                                                                                    {r.country && (
                                                                                         <div className="flex items-center gap-1 text-[10px] text-slate-500 bg-white w-fit px-2 py-1 rounded border border-slate-100">
                                                                                             <Icon path={ICONS.MapPin} className="w-3 h-3 text-emerald-500" />
-                                                                                            {r.country && <span className="font-bold text-emerald-700">{r.country}</span>}
-                                                                                            
-                                                                                            {/* ★ 只有管理員模式下才能看到經緯度連結 */}
-                                                                                            {(isAdmin && r.lat && r.lng) && (
-                                                                                                <a href={`https://www.google.com/maps/search/?api=1&query=${r.lat},${r.lng}`} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline ml-1">
-                                                                                                    ({r.lat}, {r.lng})
-                                                                                                </a>
-                                                                                            )}
+                                                                                            <span className="font-bold text-emerald-700">{r.country}</span>
                                                                                         </div>
                                                                                     )}
                                                                                 </div>
