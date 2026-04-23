@@ -41,13 +41,17 @@
             Edit2: <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />,
             Trash2: <path d="M3 6h18 M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6 M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2 M10 11v6 M14 11v6" />,
             MapPin: <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />,
-            Locate: <Fragment><circle cx="12" cy="12" r="3" /><path d="M19 12h2M3 12h2M12 19v2M12 3v2M16.24 16.24A6 6 0 1 0 7.76 7.76a6 6 0 0 0 8.48 8.48z" /></Fragment>
+            Locate: <Fragment><circle cx="12" cy="12" r="3" /><path d="M19 12h2M3 12h2M12 19v2M12 3v2M16.24 16.24A6 6 0 1 0 7.76 7.76a6 6 0 0 0 8.48 8.48z" /></Fragment>,
+            BarChart: <Fragment><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></Fragment>,
+            Crown: <path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14" />
         };
 
         const App = () => {
             const [flowers, setFlowers] = useState([]);
             const [loading, setLoading] = useState(true);
             const [expandedFlowers, setExpandedFlowers] = useState(new Set());
+            // ★ 新增：目前所在分頁狀態，預設為「圖鑑」
+            const [currentTab, setCurrentTab] = useState('圖鑑'); 
             
             const [isAdmin, setIsAdmin] = useState(false);
             const [password, setPassword] = useState("");
@@ -320,6 +324,41 @@
 
             const availableFlowerNames = flowers.map(f => f.name);
 
+            // ★ 新增：計算出白率排行資料
+            const getWhiteRateRanking = () => {
+                const rankingData = flowers.map(item => {
+                    const totalW = item.records.reduce((s, r) => s + r.w, 0);
+                    const totalB = item.records.reduce((s, r) => s + r.b, 0);
+                    const totalY = item.records.reduce((s, r) => s + r.y, 0);
+                    const totalR = item.records.reduce((s, r) => s + r.r, 0);
+                    const total = totalW + totalB + totalY + totalR;
+                    
+                    // 只有當總樣本數 > 0 時才計算機率，否則回傳 null 稍後過濾掉
+                    if (total === 0) return null;
+                    
+                    const whiteRate = (totalW / total) * 100;
+                    
+                    return {
+                        name: item.name,
+                        imageUrl: item.imageUrl,
+                        totalW: totalW,
+                        totalSamples: total,
+                        whiteRate: whiteRate,
+                        pW: whiteRate.toFixed(1)
+                    };
+                }).filter(item => item !== null); // 過濾掉沒有樣本的花
+
+                // 依照白花機率由大到小排序，如果機率一樣，則依照總白花數量排序
+                rankingData.sort((a, b) => {
+                    if (b.whiteRate === a.whiteRate) {
+                        return b.totalW - a.totalW; 
+                    }
+                    return b.whiteRate - a.whiteRate;
+                });
+
+                return rankingData;
+            };
+
             return (
                 <div className="pb-20">
                     <header className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg sticky top-0 z-20">
@@ -341,173 +380,248 @@
                         </div>
                     </header>
 
-                    <main className="max-w-5xl mx-auto px-4 py-8">
+                    <main className="max-w-5xl mx-auto px-4 py-6">
                         {loading ? (
                             <div className="text-center py-20 flex flex-col items-center">
                                 <div className="w-10 h-10 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin mb-4"></div>
                                 <p className="text-emerald-700 font-bold animate-pulse">正在讀取最新數據...</p>
                             </div>
                         ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {flowers.map(item => {
-                                    const totalW = item.records.reduce((s, r) => s + r.w, 0);
-                                    const totalB = item.records.reduce((s, r) => s + r.b, 0);
-                                    const totalY = item.records.reduce((s, r) => s + r.y, 0);
-                                    const totalR = item.records.reduce((s, r) => s + r.r, 0);
-                                    const total = totalW + totalB + totalY + totalR;
-                                    
-                                    const pW = total ? ((totalW/total)*100).toFixed(1) : "0.0";
-                                    const pB = total ? ((totalB/total)*100).toFixed(1) : "0.0";
-                                    const pY = total ? ((totalY/total)*100).toFixed(1) : "0.0";
-                                    const pR = total ? ((totalR/total)*100).toFixed(1) : "0.0";
+                            <>
+                                {/* ★ 分頁標籤切換 */}
+                                <div className="flex border-b border-emerald-100 mb-6 bg-white rounded-t-xl px-2 pt-2">
+                                    <button 
+                                        onClick={() => setCurrentTab('圖鑑')} 
+                                        className={`flex-1 py-3 px-4 text-center text-sm font-bold border-b-2 transition-colors flex items-center justify-center gap-2 ${currentTab === '圖鑑' ? 'border-emerald-500 text-emerald-700' : 'border-transparent text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+                                    >
+                                        <Icon path={ICONS.Flower}/> 詳細實驗圖鑑
+                                    </button>
+                                    <button 
+                                        onClick={() => setCurrentTab('排行')} 
+                                        className={`flex-1 py-3 px-4 text-center text-sm font-bold border-b-2 transition-colors flex items-center justify-center gap-2 ${currentTab === '排行' ? 'border-emerald-500 text-emerald-700' : 'border-transparent text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+                                    >
+                                        <Icon path={ICONS.BarChart}/> ⚪出白率排行
+                                    </button>
+                                </div>
 
-                                    const isExpanded = expandedFlowers.has(item.name);
-
-                                    const groupedByMethod = item.records.reduce((acc, r) => {
-                                        if (!acc[r.method]) acc[r.method] = { w:0, b:0, y:0, r:0, count:0, list:[] };
-                                        acc[r.method].w += r.w; acc[r.method].b += r.b; acc[r.method].y += r.y; acc[r.method].r += r.r;
-                                        acc[r.method].count += 1;
-                                        acc[r.method].list.push(r);
-                                        return acc;
-                                    }, {});
-
-                                    return (
-                                        <div key={item.name} className="bg-white rounded-3xl shadow-sm border border-emerald-100/60 overflow-hidden hover:shadow-md transition-shadow">
-                                            {item.imageUrl ? (
-                                                <div className="h-48 w-full bg-slate-50 relative p-2 border-b border-slate-100">
-                                                    <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain" />
-                                                </div>
-                                            ) : (
-                                                <div className="h-20 w-full bg-gradient-to-r from-emerald-50 to-teal-50 flex items-center justify-center border-b border-emerald-100/50">
-                                                    <Icon path={ICONS.Flower} className="text-emerald-200 opacity-60 w-8 h-8" />
-                                                </div>
-                                            )}
+                                {/* ★ 條件渲染：顯示圖鑑或顯示排行榜 */}
+                                {currentTab === '圖鑑' ? (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        {flowers.map(item => {
+                                            const totalW = item.records.reduce((s, r) => s + r.w, 0);
+                                            const totalB = item.records.reduce((s, r) => s + r.b, 0);
+                                            const totalY = item.records.reduce((s, r) => s + r.y, 0);
+                                            const totalR = item.records.reduce((s, r) => s + r.r, 0);
+                                            const total = totalW + totalB + totalY + totalR;
                                             
-                                            <div className="p-6">
-                                                <div className="flex justify-between items-end mb-4">
-                                                    <h3 className="text-2xl font-black text-slate-800">{item.name}</h3>
-                                                    <div className="flex flex-col items-end">
-                                                        <span className="text-[10px] font-bold text-slate-400 mb-0.5">總樣本數</span>
-                                                        <span className="text-sm font-black text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full">{total}</span>
-                                                    </div>
-                                                </div>
-                                                
-                                                {renderProgressBar(totalW, totalB, totalY, totalR)}
-                                                
-                                                <div className="flex justify-between text-base font-extrabold text-slate-600 mt-4 mb-2 px-1">
-                                                    <div className="flex flex-col items-center text-slate-500">
-                                                        <span>⚪ {pW}%</span>
-                                                        <span className="text-xs font-bold bg-slate-100 px-2.5 py-0.5 rounded-full mt-1.5">{totalW} 朵</span>
-                                                    </div>
-                                                    <div className="flex flex-col items-center text-blue-500">
-                                                        <span>🔵 {pB}%</span>
-                                                        <span className="text-xs font-bold bg-blue-50 px-2.5 py-0.5 rounded-full mt-1.5">{totalB} 朵</span>
-                                                    </div>
-                                                    <div className="flex flex-col items-center text-yellow-600">
-                                                        <span>🟡 {pY}%</span>
-                                                        <span className="text-xs font-bold bg-yellow-50 px-2.5 py-0.5 rounded-full mt-1.5">{totalY} 朵</span>
-                                                    </div>
-                                                    <div className="flex flex-col items-center text-red-500">
-                                                        <span>🔴 {pR}%</span>
-                                                        <span className="text-xs font-bold bg-red-50 px-2.5 py-0.5 rounded-full mt-1.5">{totalR} 朵</span>
-                                                    </div>
-                                                </div>
+                                            const pW = total ? ((totalW/total)*100).toFixed(1) : "0.0";
+                                            const pB = total ? ((totalB/total)*100).toFixed(1) : "0.0";
+                                            const pY = total ? ((totalY/total)*100).toFixed(1) : "0.0";
+                                            const pR = total ? ((totalR/total)*100).toFixed(1) : "0.0";
 
-                                                <button onClick={() => toggleExpandFlower(item.name)} className="w-full mt-6 py-3 bg-slate-50 hover:bg-emerald-50 text-slate-500 hover:text-emerald-700 rounded-xl text-sm font-bold flex justify-center items-center gap-1.5 transition-colors">
-                                                    {isExpanded ? <><Icon path={ICONS.ChevronUp}/> 收起詳細實驗數據</> : <><Icon path={ICONS.ChevronDown}/> 展開詳細實驗數據</>}
-                                                </button>
+                                            const isExpanded = expandedFlowers.has(item.name);
 
-                                                {isExpanded && (
-                                                    <div className="mt-5 pt-5 border-t-2 border-dashed border-slate-100 space-y-6">
-                                                        {Object.keys(groupedByMethod).length === 0 ? (
-                                                            <p className="text-center text-sm font-medium text-slate-400 py-4">目前尚無實驗紀錄</p>
-                                                        ) : (
-                                                            Object.entries(groupedByMethod).map(([method, stats]) => {
-                                                                const stTotal = stats.w + stats.b + stats.y + stats.r;
-                                                                return (
-                                                                    <div key={method} className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
-                                                                        <div className="flex justify-between items-center mb-3">
-                                                                            <span className="text-sm font-black text-emerald-800 bg-emerald-50 border border-emerald-100 px-3 py-1 rounded-lg">🏷️ {method}</span>
-                                                                            <span className="text-xs font-bold text-slate-400">共 {stTotal} 朵</span>
-                                                                        </div>
-                                                                        {renderProgressBar(stats.w, stats.b, stats.y, stats.r)}
-                                                                        
-                                                                        <div className="flex justify-between text-sm font-extrabold text-slate-500 mt-3 mb-4">
-                                                                            <span className="text-slate-500">⚪ {stTotal ? ((stats.w/stTotal)*100).toFixed(1) : "0.0"}%</span>
-                                                                            <span className="text-blue-500">🔵 {stTotal ? ((stats.b/stTotal)*100).toFixed(1) : "0.0"}%</span>
-                                                                            <span className="text-yellow-600">🟡 {stTotal ? ((stats.y/stTotal)*100).toFixed(1) : "0.0"}%</span>
-                                                                            <span className="text-red-500">🔴 {stTotal ? ((stats.r/stTotal)*100).toFixed(1) : "0.0"}%</span>
-                                                                        </div>
+                                            const groupedByMethod = item.records.reduce((acc, r) => {
+                                                if (!acc[r.method]) acc[r.method] = { w:0, b:0, y:0, r:0, count:0, list:[] };
+                                                acc[r.method].w += r.w; acc[r.method].b += r.b; acc[r.method].y += r.y; acc[r.method].r += r.r;
+                                                acc[r.method].count += 1;
+                                                acc[r.method].list.push(r);
+                                                return acc;
+                                            }, {});
 
-                                                                        <div className="mt-4 pt-3 border-t border-slate-100 space-y-2">
-                                                                            <p className="text-[10px] font-bold text-slate-400 mb-2">實驗明細：</p>
-                                                                            {stats.list.map((r, i) => {
-                                                                                const rTotal = r.w + r.b + r.y + r.r;
-                                                                                const rpW = rTotal ? ((r.w/rTotal)*100).toFixed(0) : "0";
-                                                                                const rpB = rTotal ? ((r.b/rTotal)*100).toFixed(0) : "0";
-                                                                                const rpY = rTotal ? ((r.y/rTotal)*100).toFixed(0) : "0";
-                                                                                const rpR = rTotal ? ((r.r/rTotal)*100).toFixed(0) : "0";
+                                            return (
+                                                <div key={item.name} className="bg-white rounded-3xl shadow-sm border border-emerald-100/60 overflow-hidden hover:shadow-md transition-shadow">
+                                                    {item.imageUrl ? (
+                                                        <div className="h-48 w-full bg-slate-50 relative p-2 border-b border-slate-100">
+                                                            <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain" />
+                                                        </div>
+                                                    ) : (
+                                                        <div className="h-20 w-full bg-gradient-to-r from-emerald-50 to-teal-50 flex items-center justify-center border-b border-emerald-100/50">
+                                                            <Icon path={ICONS.Flower} className="text-emerald-200 opacity-60 w-8 h-8" />
+                                                        </div>
+                                                    )}
+                                                    
+                                                    <div className="p-6">
+                                                        <div className="flex justify-between items-end mb-4">
+                                                            <h3 className="text-2xl font-black text-slate-800">{item.name}</h3>
+                                                            <div className="flex flex-col items-end">
+                                                                <span className="text-[10px] font-bold text-slate-400 mb-0.5">總樣本數</span>
+                                                                <span className="text-sm font-black text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full">{total}</span>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        {renderProgressBar(totalW, totalB, totalY, totalR)}
+                                                        
+                                                        <div className="flex justify-between text-base font-extrabold text-slate-600 mt-4 mb-2 px-1">
+                                                            <div className="flex flex-col items-center text-slate-500">
+                                                                <span>⚪ {pW}%</span>
+                                                                <span className="text-xs font-bold bg-slate-100 px-2.5 py-0.5 rounded-full mt-1.5">{totalW} 朵</span>
+                                                            </div>
+                                                            <div className="flex flex-col items-center text-blue-500">
+                                                                <span>🔵 {pB}%</span>
+                                                                <span className="text-xs font-bold bg-blue-50 px-2.5 py-0.5 rounded-full mt-1.5">{totalB} 朵</span>
+                                                            </div>
+                                                            <div className="flex flex-col items-center text-yellow-600">
+                                                                <span>🟡 {pY}%</span>
+                                                                <span className="text-xs font-bold bg-yellow-50 px-2.5 py-0.5 rounded-full mt-1.5">{totalY} 朵</span>
+                                                            </div>
+                                                            <div className="flex flex-col items-center text-red-500">
+                                                                <span>🔴 {pR}%</span>
+                                                                <span className="text-xs font-bold bg-red-50 px-2.5 py-0.5 rounded-full mt-1.5">{totalR} 朵</span>
+                                                            </div>
+                                                        </div>
 
-                                                                                return (
-                                                                                    <div key={i} className="flex flex-col bg-slate-50 p-2.5 rounded-lg border border-transparent hover:border-emerald-100 hover:bg-emerald-50 transition-colors">
-                                                                                        <div className="flex justify-between items-center text-xs font-bold text-slate-500 mb-1.5">
-                                                                                            <span>📅 {r.date}</span>
-                                                                                            <div className="flex items-center gap-2">
-                                                                                                <span className="tracking-widest">⚪{r.w} 🔵{r.b} 🟡{r.y} 🔴{r.r}</span>
-                                                                                                {isAdmin && (
-                                                                                                    <div className="flex gap-1 ml-2 pl-2 border-l border-slate-200">
-                                                                                                        <button onClick={() => handleEditRecord(item.name, r)} disabled={isSubmitting} className="text-emerald-500 hover:text-emerald-700 bg-white p-1 rounded shadow-sm border border-slate-100 disabled:opacity-50"><Icon path={ICONS.Edit2}/></button>
-                                                                                                        <button onClick={() => handleDeleteRecord(r._rowNumber)} disabled={isSubmitting} className="text-red-400 hover:text-red-600 bg-white p-1 rounded shadow-sm border border-slate-100 disabled:opacity-50"><Icon path={ICONS.Trash2}/></button>
+                                                        <button onClick={() => toggleExpandFlower(item.name)} className="w-full mt-6 py-3 bg-slate-50 hover:bg-emerald-50 text-slate-500 hover:text-emerald-700 rounded-xl text-sm font-bold flex justify-center items-center gap-1.5 transition-colors">
+                                                            {isExpanded ? <><Icon path={ICONS.ChevronUp}/> 收起詳細實驗數據</> : <><Icon path={ICONS.ChevronDown}/> 展開詳細實驗數據</>}
+                                                        </button>
+
+                                                        {isExpanded && (
+                                                            <div className="mt-5 pt-5 border-t-2 border-dashed border-slate-100 space-y-6">
+                                                                {Object.keys(groupedByMethod).length === 0 ? (
+                                                                    <p className="text-center text-sm font-medium text-slate-400 py-4">目前尚無實驗紀錄</p>
+                                                                ) : (
+                                                                    Object.entries(groupedByMethod).map(([method, stats]) => {
+                                                                        const stTotal = stats.w + stats.b + stats.y + stats.r;
+                                                                        return (
+                                                                            <div key={method} className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
+                                                                                <div className="flex justify-between items-center mb-3">
+                                                                                    <span className="text-sm font-black text-emerald-800 bg-emerald-50 border border-emerald-100 px-3 py-1 rounded-lg">🏷️ {method}</span>
+                                                                                    <span className="text-xs font-bold text-slate-400">共 {stTotal} 朵</span>
+                                                                                </div>
+                                                                                {renderProgressBar(stats.w, stats.b, stats.y, stats.r)}
+                                                                                
+                                                                                <div className="flex justify-between text-sm font-extrabold text-slate-500 mt-3 mb-4">
+                                                                                    <span className="text-slate-500">⚪ {stTotal ? ((stats.w/stTotal)*100).toFixed(1) : "0.0"}%</span>
+                                                                                    <span className="text-blue-500">🔵 {stTotal ? ((stats.b/stTotal)*100).toFixed(1) : "0.0"}%</span>
+                                                                                    <span className="text-yellow-600">🟡 {stTotal ? ((stats.y/stTotal)*100).toFixed(1) : "0.0"}%</span>
+                                                                                    <span className="text-red-500">🔴 {stTotal ? ((stats.r/stTotal)*100).toFixed(1) : "0.0"}%</span>
+                                                                                </div>
+
+                                                                                <div className="mt-4 pt-3 border-t border-slate-100 space-y-2">
+                                                                                    <p className="text-[10px] font-bold text-slate-400 mb-2">實驗明細：</p>
+                                                                                    {stats.list.map((r, i) => {
+                                                                                        const rTotal = r.w + r.b + r.y + r.r;
+                                                                                        const rpW = rTotal ? ((r.w/rTotal)*100).toFixed(0) : "0";
+                                                                                        const rpB = rTotal ? ((r.b/rTotal)*100).toFixed(0) : "0";
+                                                                                        const rpY = rTotal ? ((r.y/rTotal)*100).toFixed(0) : "0";
+                                                                                        const rpR = rTotal ? ((r.r/rTotal)*100).toFixed(0) : "0";
+
+                                                                                        return (
+                                                                                            <div key={i} className="flex flex-col bg-slate-50 p-2.5 rounded-lg border border-transparent hover:border-emerald-100 hover:bg-emerald-50 transition-colors">
+                                                                                                <div className="flex justify-between items-center text-xs font-bold text-slate-500 mb-1.5">
+                                                                                                    <span>📅 {r.date}</span>
+                                                                                                    <div className="flex items-center gap-2">
+                                                                                                        <span className="tracking-widest">⚪{r.w} 🔵{r.b} 🟡{r.y} 🔴{r.r}</span>
+                                                                                                        {isAdmin && (
+                                                                                                            <div className="flex gap-1 ml-2 pl-2 border-l border-slate-200">
+                                                                                                                <button onClick={() => handleEditRecord(item.name, r)} disabled={isSubmitting} className="text-emerald-500 hover:text-emerald-700 bg-white p-1 rounded shadow-sm border border-slate-100 disabled:opacity-50"><Icon path={ICONS.Edit2}/></button>
+                                                                                                                <button onClick={() => handleDeleteRecord(r._rowNumber)} disabled={isSubmitting} className="text-red-400 hover:text-red-600 bg-white p-1 rounded shadow-sm border border-slate-100 disabled:opacity-50"><Icon path={ICONS.Trash2}/></button>
+                                                                                                            </div>
+                                                                                                        )}
+                                                                                                    </div>
+                                                                                                </div>
+                                                                                                
+                                                                                                <div className="flex justify-between items-center">
+                                                                                                    <div className="flex-1 mr-4">
+                                                                                                        {renderMiniProgressBar(r.w, r.b, r.y, r.r)}
+                                                                                                    </div>
+                                                                                                    <div className="flex gap-2 text-[10px] font-bold">
+                                                                                                        <span className="text-slate-400">{rpW}%</span>
+                                                                                                        <span className="text-blue-400">{rpB}%</span>
+                                                                                                        <span className="text-yellow-500">{rpY}%</span>
+                                                                                                        <span className="text-red-400">{rpR}%</span>
+                                                                                                    </div>
+                                                                                                </div>
+                                                                                                
+                                                                                                {(r.country || (isAdmin && r.lat && r.lng)) && (
+                                                                                                    <div className="flex items-center gap-1 text-[10px] text-slate-500 bg-white w-fit px-2 py-1 rounded border border-slate-100 mt-2">
+                                                                                                        <Icon path={ICONS.MapPin} className="w-3 h-3 text-emerald-500" />
+                                                                                                        {r.country && <span className="font-bold text-emerald-700">{r.country}</span>}
+                                                                                                        
+                                                                                                        {(isAdmin && r.lat && r.lng) && (
+                                                                                                            <a href={`https://www.google.com/maps/search/?api=1&query=$${r.lat},${r.lng}`} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline ml-1">
+                                                                                                                ({r.lat}, {r.lng})
+                                                                                                            </a>
+                                                                                                        )}
                                                                                                     </div>
                                                                                                 )}
                                                                                             </div>
-                                                                                        </div>
-                                                                                        
-                                                                                        {/* ★ 強制顯示 0% 的設計 */}
-                                                                                        <div className="flex justify-between items-center">
-                                                                                            <div className="flex-1 mr-4">
-                                                                                                {renderMiniProgressBar(r.w, r.b, r.y, r.r)}
-                                                                                            </div>
-                                                                                            <div className="flex gap-2 text-[10px] font-bold">
-                                                                                                <span className="text-slate-400">{rpW}%</span>
-                                                                                                <span className="text-blue-400">{rpB}%</span>
-                                                                                                <span className="text-yellow-500">{rpY}%</span>
-                                                                                                <span className="text-red-400">{rpR}%</span>
-                                                                                            </div>
-                                                                                        </div>
-                                                                                        
-                                                                                        {(r.country || (isAdmin && r.lat && r.lng)) && (
-                                                                                            <div className="flex items-center gap-1 text-[10px] text-slate-500 bg-white w-fit px-2 py-1 rounded border border-slate-100 mt-2">
-                                                                                                <Icon path={ICONS.MapPin} className="w-3 h-3 text-emerald-500" />
-                                                                                                {r.country && <span className="font-bold text-emerald-700">{r.country}</span>}
-                                                                                                
-                                                                                                {(isAdmin && r.lat && r.lng) && (
-                                                                                                    <a href={`https://www.google.com/maps/search/?api=1&query=$${r.lat},${r.lng}`} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline ml-1">
-                                                                                                        ({r.lat}, {r.lng})
-                                                                                                    </a>
-                                                                                                )}
-                                                                                            </div>
-                                                                                        )}
-                                                                                    </div>
-                                                                                );
-                                                                            })}
-                                                                        </div>
-                                                                    </div>
-                                                                );
-                                                            })
-                                                        )}
-                                                        {isAdmin && (
-                                                            <button onClick={() => handleOpenModalRecord(item)} disabled={isSubmitting} className="w-full py-3 bg-emerald-50 text-emerald-700 font-bold text-sm rounded-xl flex justify-center items-center gap-1.5 hover:bg-emerald-100 transition-colors border border-emerald-200 border-dashed disabled:opacity-50">
-                                                                <Icon path={ICONS.Plus}/> 新增「{item.name}」的實驗紀錄
-                                                            </button>
+                                                                                        );
+                                                                                    })}
+                                                                                </div>
+                                                                            </div>
+                                                                        );
+                                                                    })
+                                                                )}
+                                                                {isAdmin && (
+                                                                    <button onClick={() => handleOpenModalRecord(item)} disabled={isSubmitting} className="w-full py-3 bg-emerald-50 text-emerald-700 font-bold text-sm rounded-xl flex justify-center items-center gap-1.5 hover:bg-emerald-100 transition-colors border border-emerald-200 border-dashed disabled:opacity-50">
+                                                                        <Icon path={ICONS.Plus}/> 新增「{item.name}」的實驗紀錄
+                                                                    </button>
+                                                                )}
+                                                            </div>
                                                         )}
                                                     </div>
-                                                )}
-                                            </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                ) : (
+                                    /* ★ 渲染排行榜畫面 */
+                                    <div className="bg-white rounded-3xl shadow-sm border border-emerald-100 p-6">
+                                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
+                                            <h2 className="text-2xl font-black text-slate-800">⚪ 出白率總排行榜</h2>
+                                            <span className="text-xs font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-full">僅統計有樣本之花朵</span>
                                         </div>
-                                    );
-                                })}
-                            </div>
+                                        <div className="space-y-4">
+                                            {getWhiteRateRanking().map((item, index) => {
+                                                // 前三名皇冠顏色設定
+                                                let crownColor = "text-transparent";
+                                                if (index === 0) crownColor = "text-yellow-400";
+                                                else if (index === 1) crownColor = "text-slate-300";
+                                                else if (index === 2) crownColor = "text-amber-600";
+
+                                                return (
+                                                    <div key={item.name} className="flex items-center bg-slate-50 hover:bg-emerald-50 transition-colors p-4 rounded-2xl border border-slate-100">
+                                                        <div className="w-10 flex flex-col items-center justify-center mr-2">
+                                                            {index < 3 ? <Icon path={ICONS.Crown} className={`w-5 h-5 mb-0.5 ${crownColor}`} /> : null}
+                                                            <span className={`text-lg font-black ${index < 3 ? 'text-slate-700' : 'text-slate-400'}`}>#{index + 1}</span>
+                                                        </div>
+                                                        
+                                                        {item.imageUrl ? (
+                                                            <div className="w-12 h-12 bg-white rounded-full p-1 border border-slate-200 shadow-sm mr-4 shrink-0">
+                                                                <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain rounded-full" />
+                                                            </div>
+                                                        ) : (
+                                                            <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mr-4 shrink-0 border border-emerald-200">
+                                                                <Icon path={ICONS.Flower} className="text-emerald-500 opacity-60 w-5 h-5" />
+                                                            </div>
+                                                        )}
+
+                                                        <div className="flex-1 min-w-0 pr-4">
+                                                            <h3 className="text-base font-black text-slate-800 truncate">{item.name}</h3>
+                                                            <div className="text-xs font-bold text-slate-500 mt-1">
+                                                                總白花: <span className="text-slate-700">{item.totalW}</span> / 總樣本: {item.totalSamples}
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="flex flex-col items-end shrink-0 pl-4 border-l border-slate-200/50">
+                                                            <span className="text-[10px] font-bold text-slate-400 mb-1">出白機率</span>
+                                                            <div className="text-2xl font-black text-slate-600 flex items-baseline">
+                                                                {item.pW}<span className="text-sm ml-0.5 text-slate-400">%</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                            {getWhiteRateRanking().length === 0 && (
+                                                <div className="text-center py-10 text-slate-400 font-bold">
+                                                    目前沒有任何實驗紀錄可以排行喔！
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </>
                         )}
                     </main>
 
