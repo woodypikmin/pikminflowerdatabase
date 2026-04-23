@@ -13,7 +13,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, Fragment, useCallback } = React;
+        const { useState, useEffect, Fragment, useCallback, useMemo } = React;
 
         const API_URL = "https://script.google.com/macros/s/AKfycbwuW-ao7uazpgYnjKH8Tlk1tk2f0vn5CQN7KzJzTktSzlPiO4MwJy9x1eKYMZxKSAFdQQ/exec";
 
@@ -50,7 +50,6 @@
             const [flowers, setFlowers] = useState([]);
             const [loading, setLoading] = useState(true);
             const [expandedFlowers, setExpandedFlowers] = useState(new Set());
-            // ★ 新增：目前所在分頁狀態，預設為「圖鑑」
             const [currentTab, setCurrentTab] = useState('圖鑑'); 
             
             const [isAdmin, setIsAdmin] = useState(false);
@@ -67,6 +66,31 @@
             const [locationCountry, setLocationCountry] = useState("");
             const [isDetectingLocation, setIsDetectingLocation] = useState(false);
             const [isFetchingGPS, setIsFetchingGPS] = useState(false);
+
+            // ★ 新增：計算最後更新時間
+            const lastUpdatedTime = useMemo(() => {
+                if (!flowers || flowers.length === 0) return "無紀錄";
+                
+                // 收集所有紀錄的日期
+                let allDates = [];
+                flowers.forEach(flower => {
+                    if (flower.records && flower.records.length > 0) {
+                        flower.records.forEach(record => {
+                            if (record.date) {
+                                allDates.push(new Date(record.date));
+                            }
+                        });
+                    }
+                });
+
+                if (allDates.length === 0) return "無紀錄";
+
+                // 找出最晚的日期
+                const latestDate = new Date(Math.max(...allDates));
+                
+                // 格式化輸出
+                return `${latestDate.getFullYear()}-${String(latestDate.getMonth() + 1).padStart(2, '0')}-${String(latestDate.getDate()).padStart(2, '0')}`;
+            }, [flowers]);
 
             const detectCountry = useCallback(async (lat, lng) => {
                 if (!lat || !lng) {
@@ -324,7 +348,6 @@
 
             const availableFlowerNames = flowers.map(f => f.name);
 
-            // ★ 新增：計算出白率排行資料
             const getWhiteRateRanking = () => {
                 const rankingData = flowers.map(item => {
                     const totalW = item.records.reduce((s, r) => s + r.w, 0);
@@ -333,7 +356,6 @@
                     const totalR = item.records.reduce((s, r) => s + r.r, 0);
                     const total = totalW + totalB + totalY + totalR;
                     
-                    // 只有當總樣本數 > 0 時才計算機率，否則回傳 null 稍後過濾掉
                     if (total === 0) return null;
                     
                     const whiteRate = (totalW / total) * 100;
@@ -346,9 +368,8 @@
                         whiteRate: whiteRate,
                         pW: whiteRate.toFixed(1)
                     };
-                }).filter(item => item !== null); // 過濾掉沒有樣本的花
+                }).filter(item => item !== null); 
 
-                // 依照白花機率由大到小排序，如果機率一樣，則依照總白花數量排序
                 rankingData.sort((a, b) => {
                     if (b.whiteRate === a.whiteRate) {
                         return b.totalW - a.totalW; 
@@ -365,7 +386,11 @@
                         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <Icon path={ICONS.Flower} className="text-emerald-100" />
-                                <h1 className="text-xl font-black tracking-wide">Pikmin 花朵變異圖鑑</h1>
+                                {/* ★ 調整：加上最後更新時間 */}
+                                <div className="flex flex-col">
+                                    <h1 className="text-xl font-black tracking-wide leading-tight">Pikmin 花朵變異圖鑑</h1>
+                                    {!loading && <span className="text-[10px] text-emerald-200/80 font-medium">最後更新: {lastUpdatedTime}</span>}
+                                </div>
                             </div>
                             <div className="flex gap-3 items-center">
                                 <button onClick={handleLogin} disabled={isLoggingIn} className={`p-2 rounded-full transition-colors ${isAdmin ? 'bg-white/20 text-yellow-300' : 'hover:bg-white/10 text-emerald-100'} ${isLoggingIn ? 'opacity-50 cursor-wait' : ''}`}>
@@ -388,7 +413,6 @@
                             </div>
                         ) : (
                             <>
-                                {/* ★ 分頁標籤切換 */}
                                 <div className="flex border-b border-emerald-100 mb-6 bg-white rounded-t-xl px-2 pt-2">
                                     <button 
                                         onClick={() => setCurrentTab('圖鑑')} 
@@ -404,7 +428,6 @@
                                     </button>
                                 </div>
 
-                                {/* ★ 條件渲染：顯示圖鑑或顯示排行榜 */}
                                 {currentTab === '圖鑑' ? (
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         {flowers.map(item => {
@@ -566,7 +589,6 @@
                                         })}
                                     </div>
                                 ) : (
-                                    /* ★ 渲染排行榜畫面 */
                                     <div className="bg-white rounded-3xl shadow-sm border border-emerald-100 p-6">
                                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
                                             <h2 className="text-2xl font-black text-slate-800">⚪ 出白率總排行榜</h2>
@@ -574,7 +596,6 @@
                                         </div>
                                         <div className="space-y-4">
                                             {getWhiteRateRanking().map((item, index) => {
-                                                // 前三名皇冠顏色設定
                                                 let crownColor = "text-transparent";
                                                 if (index === 0) crownColor = "text-yellow-400";
                                                 else if (index === 1) crownColor = "text-slate-300";
@@ -721,3 +742,5 @@
     </script>
 </body>
 </html>
+我貼錯了 這才是我現在最新的code
+你看一下喔 先不要急著改
