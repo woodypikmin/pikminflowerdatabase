@@ -67,11 +67,9 @@
             const [isDetectingLocation, setIsDetectingLocation] = useState(false);
             const [isFetchingGPS, setIsFetchingGPS] = useState(false);
 
-            // ★ 新增：計算最後更新時間
+            // 全站最後更新時間
             const lastUpdatedTime = useMemo(() => {
                 if (!flowers || flowers.length === 0) return "無紀錄";
-                
-                // 收集所有紀錄的日期
                 let allDates = [];
                 flowers.forEach(flower => {
                     if (flower.records && flower.records.length > 0) {
@@ -84,11 +82,7 @@
                 });
 
                 if (allDates.length === 0) return "無紀錄";
-
-                // 找出最晚的日期
                 const latestDate = new Date(Math.max(...allDates));
-                
-                // 格式化輸出
                 return `${latestDate.getFullYear()}-${String(latestDate.getMonth() + 1).padStart(2, '0')}-${String(latestDate.getDate()).padStart(2, '0')}`;
             }, [flowers]);
 
@@ -386,7 +380,6 @@
                         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <Icon path={ICONS.Flower} className="text-emerald-100" />
-                                {/* ★ 調整：加上最後更新時間 */}
                                 <div className="flex flex-col">
                                     <h1 className="text-xl font-black tracking-wide leading-tight">Pikmin bloom 花朵變異圖鑑</h1>
                                     {!loading && <span className="text-[10px] text-emerald-200/80 font-medium">最後更新: {lastUpdatedTime}</span>}
@@ -452,6 +445,19 @@
                                                 return acc;
                                             }, {});
 
+                                            // ★ 新增：計算單一花種的最後更新時間
+                                            let flowerLastUpdated = "無紀錄";
+                                            if (item.records && item.records.length > 0) {
+                                                const validDates = item.records
+                                                    .map(r => new Date(r.date))
+                                                    .filter(d => !isNaN(d.getTime()));
+                                                
+                                                if (validDates.length > 0) {
+                                                    const latestDate = new Date(Math.max(...validDates));
+                                                    flowerLastUpdated = `${latestDate.getFullYear()}-${String(latestDate.getMonth() + 1).padStart(2, '0')}-${String(latestDate.getDate()).padStart(2, '0')}`;
+                                                }
+                                            }
+
                                             return (
                                                 <div key={item.name} className="bg-white rounded-3xl shadow-sm border border-emerald-100/60 overflow-hidden hover:shadow-md transition-shadow">
                                                     {item.imageUrl ? (
@@ -466,7 +472,13 @@
                                                     
                                                     <div className="p-6">
                                                         <div className="flex justify-between items-end mb-4">
-                                                            <h3 className="text-2xl font-black text-slate-800">{item.name}</h3>
+                                                            <div>
+                                                                <h3 className="text-2xl font-black text-slate-800">{item.name}</h3>
+                                                                {/* ★ 新增的單花更新時間顯示 */}
+                                                                <div className="text-[10px] font-bold text-slate-400 mt-1">
+                                                                    最後新增: {flowerLastUpdated}
+                                                                </div>
+                                                            </div>
                                                             <div className="flex flex-col items-end">
                                                                 <span className="text-[10px] font-bold text-slate-400 mb-0.5">總樣本數</span>
                                                                 <span className="text-sm font-black text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full">{total}</span>
