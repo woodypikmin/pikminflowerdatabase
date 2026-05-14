@@ -67,7 +67,6 @@
             const [isDetectingLocation, setIsDetectingLocation] = useState(false);
             const [isFetchingGPS, setIsFetchingGPS] = useState(false);
 
-            // 全站最後更新時間
             const lastUpdatedTime = useMemo(() => {
                 if (!flowers || flowers.length === 0) return "無紀錄";
                 let allDates = [];
@@ -137,6 +136,22 @@
                     },
                     { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
                 );
+            };
+
+            // ★ 新增：智慧貼上座標功能
+            const handleCoordinatePaste = (e) => {
+                const pastedText = e.clipboardData.getData('text');
+                
+                // 檢查是否符合 "緯度, 經度" 或 "緯度,經度" 的格式 (可以有空白)
+                const coordsRegex = /^\s*(-?\d+(\.\d+)?)\s*,\s*(-?\d+(\.\d+)?)\s*$/;
+                const match = pastedText.match(coordsRegex);
+
+                if (match) {
+                    e.preventDefault(); // 阻止原本的貼上行為
+                    const newLat = match[1];
+                    const newLng = match[3];
+                    setFormData(prev => ({ ...prev, lat: newLat, lng: newLng }));
+                }
             };
 
             const fetchData = async () => {
@@ -445,7 +460,6 @@
                                                 return acc;
                                             }, {});
 
-                                            // ★ 新增：計算單一花種的最後更新時間
                                             let flowerLastUpdated = "無紀錄";
                                             if (item.records && item.records.length > 0) {
                                                 const validDates = item.records
@@ -474,7 +488,6 @@
                                                         <div className="flex justify-between items-end mb-4">
                                                             <div>
                                                                 <h3 className="text-2xl font-black text-slate-800">{item.name}</h3>
-                                                                {/* ★ 新增的單花更新時間顯示 */}
                                                                 <div className="text-[10px] font-bold text-slate-400 mt-1">
                                                                     最後新增: {flowerLastUpdated}
                                                                 </div>
@@ -714,13 +727,14 @@
                                         <p className="text-[10px] text-sky-600/80 -mt-2">直接在下方輸入經緯度，系統也會自動幫你翻譯成國家。</p>
                                         
                                         <div className="grid grid-cols-2 gap-4 mt-2">
+                                            {/* ★ 這裡加上了 onPaste 事件 */}
                                             <div>
                                                 <label className="text-xs font-bold text-sky-600 block mb-1">緯度 (Lat)</label>
-                                                <input type="text" placeholder="例如: 25.189888" className="w-full border-0 shadow-sm rounded-xl p-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-500" value={formData.lat} onChange={e => setFormData({ ...formData, lat: e.target.value })} />
+                                                <input onPaste={handleCoordinatePaste} type="text" placeholder="例如: 25.189888" className="w-full border-0 shadow-sm rounded-xl p-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-500 placeholder:text-slate-300" value={formData.lat} onChange={e => setFormData({ ...formData, lat: e.target.value })} />
                                             </div>
                                             <div>
                                                 <label className="text-xs font-bold text-sky-600 block mb-1">經度 (Lng)</label>
-                                                <input type="text" placeholder="例如: 121.488269" className="w-full border-0 shadow-sm rounded-xl p-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-500" value={formData.lng} onChange={e => setFormData({ ...formData, lng: e.target.value })} />
+                                                <input onPaste={handleCoordinatePaste} type="text" placeholder="例如: 121.488269" className="w-full border-0 shadow-sm rounded-xl p-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-500 placeholder:text-slate-300" value={formData.lng} onChange={e => setFormData({ ...formData, lng: e.target.value })} />
                                             </div>
                                         </div>
                                         
