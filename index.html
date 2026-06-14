@@ -46,12 +46,13 @@
             Crown: <path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14" />
         };
 
-        // ★ 新增：國家名稱專屬過濾器
+        // ★ 升級：反向尋找中文，優先命中繁體區域翻譯
         const cleanCountryName = (rawCountry) => {
             if (!rawCountry) return "";
             const parts = String(rawCountry).split(';');
-            let zh = parts.find(p => /[\u4e00-\u9fa5]/.test(p));
-            let result = (zh || parts[0]).trim();
+            // 將陣列反轉，從後面找起，這樣能完美避開 OSM 預設的簡體中文，抓到後面的繁體在地化翻譯
+            let zh = [...parts].reverse().find(p => /[\u4e00-\u9fa5]/.test(p));
+            let result = (zh || parts[parts.length - 1]).trim();
             if (result === "臺灣" || result === "中華民國" || result === "Taiwan") result = "台灣";
             return result;
         };
@@ -95,7 +96,6 @@
                 return `${latestDate.getFullYear()}-${String(latestDate.getMonth() + 1).padStart(2, '0')}-${String(latestDate.getDate()).padStart(2, '0')}`;
             }, [flowers]);
 
-            // ★ 升級版：使用 OSM Nominatim API + 經緯度防呆
             const detectCountry = useCallback(async (lat, lng) => {
                 let numLat = parseFloat(lat);
                 let numLng = parseFloat(lng);
@@ -105,7 +105,6 @@
                     return;
                 }
 
-                // 防呆：如果緯度大於90但經度小於90，自動對調
                 if (Math.abs(numLat) > 90 && Math.abs(numLng) <= 90) {
                     let temp = numLat;
                     numLat = numLng;
@@ -113,7 +112,6 @@
                     setFormData(prev => ({ ...prev, lat: String(numLat), lng: String(numLng) }));
                 }
 
-                // 格式無效擋下
                 if (numLat < -90 || numLat > 90 || numLng < -180 || numLng > 180) {
                     setLocationCountry("無效座標");
                     return;
@@ -126,7 +124,6 @@
                     const data = await res.json();
                     
                     if (data && data.address && data.address.country) {
-                        // 使用過濾器清洗地名
                         setLocationCountry(cleanCountryName(data.address.country));
                     } else {
                         setLocationCountry("未知國家");
