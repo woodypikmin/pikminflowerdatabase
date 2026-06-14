@@ -46,15 +46,34 @@
             Crown: <path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14" />
         };
 
-        // ★ 升級：反向尋找中文，優先命中繁體區域翻譯
+        // ★ 保底過濾器：處理那些真的很奇怪的舊資料
         const cleanCountryName = (rawCountry) => {
             if (!rawCountry) return "";
             const parts = String(rawCountry).split(';');
-            // 將陣列反轉，從後面找起，這樣能完美避開 OSM 預設的簡體中文，抓到後面的繁體在地化翻譯
             let zh = [...parts].reverse().find(p => /[\u4e00-\u9fa5]/.test(p));
             let result = (zh || parts[parts.length - 1]).trim();
-            if (result === "臺灣" || result === "中華民國" || result === "Taiwan") result = "台灣";
-            return result;
+            
+            // 手動覆蓋常見的 OSM 簡體或錯誤稱呼 (針對舊資料)
+            const dict = {
+                "臺灣": "台灣", "中華民國": "台灣", "Taiwan": "台灣",
+                "肯尼亚": "肯亞", "意大利": "義大利", "新西兰": "紐西蘭",
+                "澳大利亚": "澳洲", "印度尼西亚": "印尼", "沙特阿拉伯": "沙烏地阿拉伯",
+                "阿联酋": "阿拉伯聯合大公國"
+            };
+            return dict[result] || result;
+        };
+
+        // ★ 終極殺手鐧：利用瀏覽器內建字典 (Intl.DisplayNames) 將國家代碼轉為標準台灣繁體
+        const getTaiwaneseCountryName = (countryCode, fallbackName) => {
+            if (!countryCode) return cleanCountryName(fallbackName);
+            try {
+                const regionNames = new Intl.DisplayNames(['zh-TW'], { type: 'region' });
+                let name = regionNames.of(countryCode.toUpperCase());
+                if (name === "臺灣" || name === "中華民國") return "台灣";
+                return name;
+            } catch (e) {
+                return cleanCountryName(fallbackName);
+            }
         };
 
         const App = () => {
@@ -123,8 +142,9 @@
                     if (!res.ok) throw new Error("API Limit");
                     const data = await res.json();
                     
-                    if (data && data.address && data.address.country) {
-                        setLocationCountry(cleanCountryName(data.address.country));
+                    if (data && data.address) {
+                        // 取得完美的在地化名稱
+                        setLocationCountry(getTaiwaneseCountryName(data.address.country_code, data.address.country));
                     } else {
                         setLocationCountry("未知國家");
                     }
@@ -611,7 +631,7 @@
                                                                                                     <div className="flex items-center gap-1 text-[10px] text-slate-500 bg-white w-fit px-2 py-1 rounded border border-slate-100 mt-2">
                                                                                                         <Icon path={ICONS.MapPin} className="w-3 h-3 text-emerald-500" />
                                                                                                         
-                                                                                                        {/* ★ 使用過濾器清洗顯示出來的名字 */}
+                                                                                                        {/* 使用本地化字典強制轉換為繁體 */}
                                                                                                         {r.country && <span className="font-bold text-emerald-700">{cleanCountryName(r.country)}</span>}
                                                                                                         
                                                                                                         {(isAdmin && r.lat && r.lng) && (
